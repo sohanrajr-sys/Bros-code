@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { functionSignatureSchema } from "./functionSignature";
 
 export const testCaseInputSchema = z.object({
   input: z.string().min(1, "Test case input is required"),
@@ -18,6 +19,7 @@ export const problemInputSchema = z.object({
   tags: z.array(z.string()).default([]),
   type: z.enum(["DSA", "SQL"]),
   constraints: z.string().optional().nullable(),
+  functionSignature: functionSignatureSchema.optional().nullable(),
   testCases: z.array(testCaseInputSchema).min(1, "At least one test case is required"),
 });
 

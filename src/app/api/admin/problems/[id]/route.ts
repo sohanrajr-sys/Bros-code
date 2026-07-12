@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { problemInputSchema } from "@/lib/problemSchema";
@@ -50,13 +51,14 @@ export async function PUT(req: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Problem not found" }, { status: 404 });
   }
 
-  const { testCases, ...problemFields } = result.data;
+  const { testCases, functionSignature, ...problemFields } = result.data;
 
   try {
     const problem = await prisma.problem.update({
       where: { id },
       data: {
         ...problemFields,
+        functionSignature: functionSignature ?? Prisma.JsonNull,
         testCases: {
           deleteMany: {},
           create: testCases.map((tc) => ({

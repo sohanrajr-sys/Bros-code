@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PARAM_TYPES, type FunctionSignature, type ParamType } from "@/lib/functionSignature";
 
 type TestCaseDraft = {
   input: string;
@@ -18,6 +19,7 @@ export type ProblemFormInitial = {
   type: "DSA" | "SQL";
   constraints: string;
   tags: string[];
+  functionSignature: FunctionSignature | null;
   testCases: TestCaseDraft[];
 };
 
@@ -26,6 +28,12 @@ const EMPTY_TEST_CASE: TestCaseDraft = {
   expectedOutput: "",
   isHidden: false,
   order: 0,
+};
+
+const EMPTY_SIGNATURE: FunctionSignature = {
+  functionName: "",
+  params: [{ name: "", type: "int" }],
+  returnType: "int",
 };
 
 function defaultState(): ProblemFormInitial {
@@ -37,6 +45,7 @@ function defaultState(): ProblemFormInitial {
     type: "DSA",
     constraints: "",
     tags: [],
+    functionSignature: EMPTY_SIGNATURE,
     testCases: [{ ...EMPTY_TEST_CASE, order: 0 }],
   };
 }
@@ -77,6 +86,40 @@ export function ProblemForm({
     }));
   }
 
+  function updateSignature(patch: Partial<FunctionSignature>) {
+    setForm((prev) => ({
+      ...prev,
+      functionSignature: { ...(prev.functionSignature ?? EMPTY_SIGNATURE), ...patch },
+    }));
+  }
+
+  function updateParam(index: number, patch: Partial<{ name: string; type: ParamType }>) {
+    setForm((prev) => {
+      const sig = prev.functionSignature ?? EMPTY_SIGNATURE;
+      return {
+        ...prev,
+        functionSignature: {
+          ...sig,
+          params: sig.params.map((p, i) => (i === index ? { ...p, ...patch } : p)),
+        },
+      };
+    });
+  }
+
+  function addParam() {
+    setForm((prev) => {
+      const sig = prev.functionSignature ?? EMPTY_SIGNATURE;
+      return { ...prev, functionSignature: { ...sig, params: [...sig.params, { name: "", type: "int" }] } };
+    });
+  }
+
+  function removeParam(index: number) {
+    setForm((prev) => {
+      const sig = prev.functionSignature ?? EMPTY_SIGNATURE;
+      return { ...prev, functionSignature: { ...sig, params: sig.params.filter((_, i) => i !== index) } };
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -87,6 +130,8 @@ export function ProblemForm({
       .map((t) => t.trim())
       .filter(Boolean);
 
+    const hasSignature = form.type === "DSA" && (form.functionSignature?.functionName ?? "").trim().length > 0;
+
     const body = {
       slug: form.slug,
       title: form.title,
@@ -95,6 +140,12 @@ export function ProblemForm({
       type: form.type,
       constraints: form.constraints || null,
       tags,
+      functionSignature: hasSignature
+        ? {
+            ...form.functionSignature,
+            params: form.functionSignature!.params.filter((p) => p.name.trim().length > 0),
+          }
+        : null,
       testCases: form.testCases.map((tc, i) => ({ ...tc, order: tc.order ?? i })),
     };
 
@@ -190,6 +241,85 @@ export function ProblemForm({
           />
         </label>
       </div>
+
+      {form.type === "DSA" && (
+        <div className="rounded-lg border border-navy-border bg-navy-900 p-4">
+          <h2 className="text-sm font-medium text-foreground">Function signature</h2>
+          <p className="mt-1 text-xs text-text-muted">
+            Optional. If set, students get a LeetCode-style function stub instead of raw stdin/stdout.
+          </p>
+
+          <label className="mt-3 flex flex-col gap-1">
+            <span className="text-xs text-text-muted">Function name</span>
+            <input
+              value={form.functionSignature?.functionName ?? ""}
+              onChange={(e) => updateSignature({ functionName: e.target.value })}
+              placeholder="twoSum"
+              className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 font-mono text-sm text-foreground sm:max-w-xs"
+            />
+          </label>
+
+          <div className="mt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted">Parameters</span>
+              <button
+                type="button"
+                onClick={addParam}
+                className="min-h-[44px] rounded border border-navy-border px-3 text-sm text-cyan hover:border-cyan"
+              >
+                Add parameter
+              </button>
+            </div>
+            <div className="mt-2 flex flex-col gap-2">
+              {(form.functionSignature?.params ?? []).map((p, i) => (
+                <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    value={p.name}
+                    onChange={(e) => updateParam(i, { name: e.target.value })}
+                    placeholder="paramName"
+                    className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 font-mono text-sm text-foreground sm:flex-1"
+                  />
+                  <select
+                    value={p.type}
+                    onChange={(e) => updateParam(i, { type: e.target.value as ParamType })}
+                    className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground sm:w-40"
+                  >
+                    {PARAM_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  {(form.functionSignature?.params.length ?? 0) > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeParam(i)}
+                      className="min-h-[44px] rounded px-3 text-sm text-danger hover:bg-danger/10"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <label className="mt-3 flex flex-col gap-1">
+            <span className="text-xs text-text-muted">Return type</span>
+            <select
+              value={form.functionSignature?.returnType ?? "int"}
+              onChange={(e) => updateSignature({ returnType: e.target.value as ParamType })}
+              className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground sm:max-w-xs"
+            >
+              {PARAM_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       <label className="flex flex-col gap-1">
         <span className="text-sm text-text-muted">Description (markdown)</span>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { problemInputSchema } from "@/lib/problemSchema";
@@ -46,12 +47,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const { testCases, ...problemFields } = result.data;
+  const { testCases, functionSignature, ...problemFields } = result.data;
 
   try {
     const problem = await prisma.problem.create({
       data: {
         ...problemFields,
+        functionSignature: functionSignature ?? Prisma.JsonNull,
         createdBy: user.userId,
         testCases: {
           create: testCases.map((tc) => ({

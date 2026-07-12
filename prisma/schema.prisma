@@ -50,6 +50,7 @@ model Problem {
   tags        String[]
   type        ProblemType
   constraints String?
+  functionSignature Json?
   createdBy   String
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserFromCookies } from "@/lib/session";
 import { Forbidden } from "@/components/admin/Forbidden";
 import { ProblemForm } from "@/components/admin/ProblemForm";
+import type { FunctionSignature } from "@/lib/functionSignature";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function EditProblemPage({
             type: problem.type,
             constraints: problem.constraints ?? "",
             tags: problem.tags,
+            functionSignature: problem.functionSignature as FunctionSignature | null,
             testCases: problem.testCases.map((tc) => ({
               input: tc.input,
               expectedOutput: tc.expectedOutput,

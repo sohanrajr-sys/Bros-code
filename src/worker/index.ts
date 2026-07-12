@@ -32,7 +32,7 @@ async function processSubmission(submissionId: string): Promise<void> {
     const outcome =
       problem.type === "SQL"
         ? await gradeSql(submission.id, submission.code, problem.testCases)
-        : await gradeDsa(submission.language, submission.code, problem.testCases);
+        : await gradeDsa(submission.language, submission.code, problem.testCases, problem.functionSignature);
 
     await prisma.submission.update({
       where: { id: submissionId },

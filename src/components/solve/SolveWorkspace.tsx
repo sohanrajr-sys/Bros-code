@@ -3,12 +3,7 @@
 import { useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
 import type { Language, ProblemType } from "@/generated/prisma/enums";
-import {
-  DSA_LANGUAGES,
-  LANGUAGE_LABELS,
-  MONACO_LANGUAGE_IDS,
-  STARTER_CODE,
-} from "./languageMeta";
+import { DSA_LANGUAGES, LANGUAGE_LABELS, MONACO_LANGUAGE_IDS } from "./languageMeta";
 
 interface SampleTestCase {
   id: string;
@@ -49,12 +44,14 @@ export function SolveWorkspace({
   description,
   constraints,
   sampleTestCases,
+  starterCodeByLanguage,
 }: {
   problemId: string;
   problemType: ProblemType;
   description: string;
   constraints: string | null;
   sampleTestCases: SampleTestCase[];
+  starterCodeByLanguage: Partial<Record<Language, string>>;
 }) {
   const availableLanguages: Language[] = useMemo(
     () => (problemType === "SQL" ? ["SQL"] : DSA_LANGUAGES),
@@ -64,7 +61,7 @@ export function SolveWorkspace({
   const [language, setLanguage] = useState<Language>(availableLanguages[0]);
   const [codeByLanguage, setCodeByLanguage] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    for (const lang of availableLanguages) initial[lang] = STARTER_CODE[lang];
+    for (const lang of availableLanguages) initial[lang] = starterCodeByLanguage[lang] ?? "";
     return initial;
   });
   const [activeTab, setActiveTab] = useState<Tab>("description");

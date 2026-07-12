@@ -48,7 +48,7 @@ export async function POST(
   const outcome =
     problem.type === "SQL"
       ? await gradeSql(`run_${randomUUID()}`, code, problem.testCases)
-      : await gradeDsa(language as Language, code, problem.testCases);
+      : await gradeDsa(language as Language, code, problem.testCases, problem.functionSignature);
 
   return NextResponse.json(outcome);
 }

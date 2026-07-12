@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { SolveWorkspace } from "@/components/solve/SolveWorkspace";
+import { getCodegen } from "@/lib/codegen";
+import { functionSignatureSchema } from "@/lib/functionSignature";
+import { DSA_LANGUAGES, STARTER_CODE } from "@/components/solve/languageMeta";
+import type { Language } from "@/generated/prisma/enums";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +30,18 @@ export default async function SolvePage({
   const problem = await getProblem(slug);
   if (!problem) notFound();
 
+  const starterCodeByLanguage: Partial<Record<Language, string>> = {};
+  if (problem.type === "DSA" && problem.functionSignature) {
+    const sig = functionSignatureSchema.parse(problem.functionSignature);
+    for (const lang of DSA_LANGUAGES) {
+      const codegen = getCodegen(lang);
+      starterCodeByLanguage[lang] = codegen ? codegen.starterTemplate(sig) : STARTER_CODE[lang];
+    }
+  } else {
+    for (const lang of DSA_LANGUAGES) starterCodeByLanguage[lang] = STARTER_CODE[lang];
+  }
+  starterCodeByLanguage.SQL = STARTER_CODE.SQL;
+
   return (
     <main className="flex flex-1 flex-col">
       <header className="flex flex-wrap items-center gap-3 border-b border-navy-border px-4 py-3">
@@ -47,6 +63,7 @@ export default async function SolvePage({
         description={problem.description}
         constraints={problem.constraints}
         sampleTestCases={problem.testCases}
+        starterCodeByLanguage={starterCodeByLanguage}
       />
     </main>
   );
