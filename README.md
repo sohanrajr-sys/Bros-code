@@ -25,6 +25,11 @@ cp .env.example .env
 Defaults in `.env.example` (`DATABASE_URL` / `REDIS_URL` / `PISTON_URL`) point at the
 ports the `docker compose` services below expose — no edits needed for local dev.
 
+Auth needs two more things set in `.env` before seeding: `SESSION_SECRET` (any long
+random string — e.g. `openssl rand -base64 32`) and `ADMIN_EMAIL`/`ADMIN_PASSWORD`
+(credentials for the first admin account, created by `db:seed` below). See "Auth" further
+down for how login works.
+
 ### 3. Start the backing services
 
 ```bash
@@ -62,7 +67,7 @@ curl -s http://localhost:2000/api/v2/runtimes
 
 ```bash
 npx prisma migrate deploy     # applies prisma/migrations/
-npm run db:seed               # adds two sample problems (Two Sum, an SQL problem)
+npm run db:seed               # bootstraps the admin account + sample problems
 ```
 
 ### 6. Run the app
@@ -77,20 +82,28 @@ npm run worker   # terminal 2 — consumes the `submissions` queue
 
 ### 7. Verify it worked
 
-- Problem list: http://localhost:3000
-- Solve a problem: http://localhost:3000/problems/two-sum — pick Python, submit the
-  starter solution filled in, confirm it grades (pass or fail) instead of hanging.
-- Admin (create/edit problems): http://localhost:3000/admin/problems — set a `debug-role=admin` cookie first (see "Auth" below).
+- Student login: http://localhost:3000/login — log in as a student added via
+  `/admin/students` (see "Auth" below).
+- Admin login: http://localhost:3000/admin/login — use the `ADMIN_EMAIL`/`ADMIN_PASSWORD`
+  from your `.env`.
+- Solve a problem: http://localhost:3000/problems/two-sum (while logged in) — pick Python,
+  submit the starter solution filled in, confirm it grades (pass or fail) instead of hanging.
 
 ## Auth
 
-Real authentication is being built separately and isn't part of this repo yet.
-`src/lib/session.ts` is a temporary stand-in: it reads `x-debug-role`/
-`x-debug-user-id` headers (API requests) or `debug-role`/`debug-user-id`
-cookies (browser), defaulting to `{ role: "student" }` if absent. The admin
-UI has a dev-only role switcher (`src/app/admin/layout.tsx`) that sets the
-cookie for you. Swap `getSessionUser`/`getSessionUserFromCookies` for the
-real implementation once it lands — nothing else should need to change.
+Two separate, credential-based logins — no self-registration for either role:
+
+- **Students** sign in at `/login` with a Student ID + password. Admins create student
+  accounts (and their auto-generated, one-time-shown passwords) at `/admin/students`.
+- **Admins** sign in at `/admin/login` with an email + password. The first admin account
+  is bootstrapped by `npm run db:seed` from `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`
+  (re-running `db:seed` never overwrites an existing admin's password).
+
+Sessions are a signed JWT (`jose`, `SESSION_SECRET` in `.env`) in an httpOnly cookie,
+verified both optimistically in `src/proxy.ts` (redirects logged-out visitors to the right
+login page) and per-request in every Server Component/Route Handler/Server Action via
+`getSessionUser`/`getSessionUserFromCookies` (`src/lib/session.ts`) — Proxy alone is never
+trusted as the sole gate. Passwords are hashed with `bcrypt` (`src/lib/password.ts`).
 
 ## Judge execution
 

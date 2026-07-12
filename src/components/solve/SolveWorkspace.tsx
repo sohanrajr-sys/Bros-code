@@ -33,11 +33,6 @@ interface GradeResult {
 
 type Tab = "description" | "code" | "results";
 
-function readCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 // The server can fail before producing a JSON body (e.g. an unhandled
 // exception yields an empty response) — res.json() throws a confusing
 // "Unexpected end of JSON input" in that case, so parse defensively.
@@ -119,11 +114,10 @@ export function SolveWorkspace({
     setSubmissionStatus("QUEUED");
     setActiveTab("results");
     try {
-      const userId = readCookie("debug-user-id") ?? "dev-student";
       const res = await fetch(`/api/problems/${problemId}/submissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, language, code }),
+        body: JSON.stringify({ language, code }),
       });
       const data = await parseJsonResponse(res);
       if (!res.ok) throw new Error((data.error as string) ?? "submit failed");

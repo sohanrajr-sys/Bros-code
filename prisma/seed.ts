@@ -2,6 +2,40 @@ import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import type { Prisma } from "../src/generated/prisma/client";
 import type { FunctionSignature } from "../src/lib/functionSignature";
+import { hashPassword } from "../src/lib/password";
+
+async function bootstrapAdmin(): Promise<{ id: string } | null> {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password) {
+    console.warn("ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping admin bootstrap.");
+    return null;
+  }
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`Admin already exists: ${existing.email} (password left unchanged)`);
+    return existing;
+  }
+  const passwordHash = await hashPassword(password);
+  const admin = await prisma.user.create({
+    data: { email, passwordHash, role: "ADMIN", name: "Admin" },
+  });
+  console.log(`Bootstrapped admin: ${admin.email}`);
+  return admin;
+}
+
+// Fixed-credential test student, unlike bootstrapAdmin this always resets the
+// password on reseed — it exists purely so local dev has a known login to test with.
+async function seedTestStudent(): Promise<void> {
+  const studentId = "student1";
+  const passwordHash = await hashPassword("password123");
+  await prisma.user.upsert({
+    where: { studentId },
+    update: { passwordHash },
+    create: { studentId, name: "Test Student", role: "STUDENT", passwordHash },
+  });
+  console.log(`Seeded test student: ${studentId}`);
+}
 
 // --- line-encoding helpers (mirror src/lib/codegen/*.ts's driver encoding) ---
 function encInt(n: number): string {
@@ -86,6 +120,12 @@ function buildCases<T>(
 
 async function main() {
   const seededSlugs: string[] = [];
+  const admin = await bootstrapAdmin();
+  await seedTestStudent();
+  // Transitional fallback: falls back to the literal "seed-script" string only
+  // if ADMIN_EMAIL/ADMIN_PASSWORD aren't set. Once the Problem/Submission FK
+  // migration lands, ADMIN_EMAIL/ADMIN_PASSWORD must be set for seeding to work.
+  const adminId = admin?.id ?? "seed-script";
 
   const twoSumSignature: FunctionSignature = {
     functionName: "twoSum",
@@ -106,7 +146,7 @@ async function main() {
     type: "DSA" as const,
     constraints: "2 <= nums.length <= 10^4",
     functionSignature: twoSumSignature as unknown as Prisma.InputJsonValue,
-    createdBy: "seed-script",
+    createdBy: adminId,
   };
 
   const twoSum = await prisma.problem.upsert({
@@ -134,7 +174,7 @@ async function main() {
     tags: ["sql", "dates", "group-by"],
     type: "SQL" as const,
     constraints: null,
-    createdBy: "seed-script",
+    createdBy: adminId,
   };
 
   const activeUsers = await prisma.problem.upsert({
@@ -181,7 +221,7 @@ async function main() {
       type: "DSA" as const,
       constraints: fields.constraints,
       functionSignature: fields.signature as unknown as Prisma.InputJsonValue,
-      createdBy: "seed-script",
+      createdBy: adminId,
     };
     const problem = await prisma.problem.upsert({
       where: { slug: fields.slug },
