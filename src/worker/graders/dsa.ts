@@ -1,6 +1,6 @@
 import type { TestCase } from "@/generated/prisma/client";
 import type { Language } from "@/generated/prisma/enums";
-import { isJudge0Accepted, JUDGE0_LANGUAGE_IDS, runJudge0Submission } from "@/lib/judge0";
+import { PISTON_RUNTIMES, runPistonSubmission } from "@/lib/piston";
 import { getCodegen } from "@/lib/codegen";
 import { functionSignatureSchema, type FunctionSignature } from "@/lib/functionSignature";
 import type { FirstFailure, GradeOutcome, TestCaseResult } from "../types";
@@ -11,14 +11,13 @@ export async function gradeDsa(
   testCases: TestCase[],
   functionSignature?: unknown
 ): Promise<GradeOutcome> {
-  const languageId = JUDGE0_LANGUAGE_IDS[language];
-  if (!languageId) {
-    throw new Error(`no judge0 language mapping for language "${language}"`);
+  if (!PISTON_RUNTIMES[language]) {
+    throw new Error(`no piston runtime mapping for language "${language}"`);
   }
 
   // A functionSignature means the student only wrote a function stub (see
   // src/lib/codegen) — wrap it with the generated driver before sending to
-  // Judge0. Problems without a signature fall back to raw stdin/stdout code
+  // Piston. Problems without a signature fall back to raw stdin/stdout code
   // (the original, pre-codegen model), so this stays backward compatible.
   let sourceCode = code;
   if (functionSignature) {
@@ -34,23 +33,30 @@ export async function gradeDsa(
   let firstFailure: FirstFailure | undefined;
 
   for (const testCase of testCases) {
-    const result = await runJudge0Submission({
+    const result = await runPistonSubmission({
       sourceCode,
-      languageId,
+      language,
       stdin: testCase.input,
-      expectedOutput: testCase.expectedOutput,
     });
 
-    const passed = isJudge0Accepted(result);
+    const actualOutput = result.stdout.trim();
+    const passed = !result.compileFailed && !result.timedOut && actualOutput === testCase.expectedOutput.trim();
     cases.push({ testCaseId: testCase.id, passed, isHidden: testCase.isHidden });
 
     if (!passed && !firstFailure) {
+      const error = result.compileFailed
+        ? "Compile Error"
+        : result.timedOut
+          ? "Time Limit Exceeded"
+          : result.stderr
+            ? "Runtime Error"
+            : "Wrong Answer";
       firstFailure = {
         testCaseId: testCase.id,
         input: testCase.input,
         expectedOutput: testCase.expectedOutput,
-        actualOutput: result.stdout ?? result.compile_output ?? result.stderr ?? result.message ?? "",
-        error: result.status.description,
+        actualOutput: actualOutput || result.compileStderr || result.stderr,
+        error,
       };
     }
   }

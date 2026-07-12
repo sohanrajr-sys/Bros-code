@@ -2,7 +2,7 @@ import type { FunctionSignature, ParamType } from "@/lib/functionSignature";
 import type { LanguageCodegen } from "./types";
 
 // Only one top-level class may be `public` in a Java file — Main holds
-// main() (Judge0's Java source file is Main.java), Solution (the student's
+// main() (Piston's Java source file is Main.java), Solution (the student's
 // code) and the helper classes stay package-private in the same file.
 const PREAMBLE = `
 class ListNode {
@@ -254,13 +254,13 @@ export const javaCodegen: LanguageCodegen = {
   },
 
   wrapForExecution(sig: FunctionSignature, studentCode: string) {
+    // `Main` must be the first top-level class declared in the file: Piston's
+    // `java` single-file source-launcher (JEP 330) runs whichever class comes first,
+    // not the one literally named `Main` — forward references to Solution/PREAMBLE
+    // classes declared later in the same file are fine in Java.
     const lines: string[] = [
       "import java.util.*;",
       "import java.io.*;",
-      "",
-      PREAMBLE,
-      "",
-      studentCode.trimEnd(),
       "",
       "public class Main {",
       "    public static void main(String[] args) throws Exception {",
@@ -276,6 +276,7 @@ export const javaCodegen: LanguageCodegen = {
     lines.push(`        ${javaType(sig.returnType)} _result = _sol.${sig.functionName}(${argList});`);
     lines.push(`        System.out.println(${serializeExpr(sig.returnType, "_result")});`);
     lines.push("    }", "}");
+    lines.push("", PREAMBLE, "", studentCode.trimEnd());
     return lines.join("\n");
   },
 };

@@ -1,4 +1,4 @@
-A LeetCode-style code judge: DSA and SQL problems, solved in-browser across 6 languages (C, C++, Java, Python, Go, Scala), graded by a self-hosted judge. Next.js 14 (App Router) + TypeScript, Postgres via Prisma, Redis + BullMQ for grading, Judge0 for DSA execution.
+A LeetCode-style code judge: DSA and SQL problems, solved in-browser across 5 languages (C, C++, Java, Python, Go), graded by a self-hosted judge. Next.js 14 (App Router) + TypeScript, Postgres via Prisma, Redis + BullMQ for grading, Piston for DSA execution.
 
 ## Getting Started (clone and run)
 
@@ -6,7 +6,7 @@ Requires Node 20+ and Docker.
 
 ```bash
 npm install
-cp .env.example .env          # DATABASE_URL / REDIS_URL / JUDGE0_URL — defaults work as-is
+cp .env.example .env          # DATABASE_URL / REDIS_URL / PISTON_URL — defaults work as-is
 docker compose up -d postgres redis
 npx prisma migrate deploy     # applies prisma/migrations/
 npm run db:seed               # adds two sample problems (Two Sum, an SQL problem)
@@ -50,18 +50,21 @@ npm run worker                        # consumes the `submissions` queue
 SQL submissions are graded directly against the shared Postgres instance
 (schema-per-submission, dropped after grading) and need no extra services.
 
-DSA submissions (C/C++/Java/Python/Go/Scala) are graded via a self-hosted
-[Judge0](https://github.com/judge0/judge0) instance:
+DSA submissions (C/C++/Java/Python/Go) are graded via a self-hosted
+[Piston](https://github.com/engineer-man/piston) instance:
 
 ```bash
-docker compose up -d judge0-server judge0-workers judge0-db judge0-redis
+docker compose up -d piston
 ```
 
-Judge0's `isolate` sandbox needs `privileged: true` and cgroup access that
-some container runtimes (e.g. locked-down CI sandboxes, some local Docker
-Desktop configurations) don't grant. In this repo's dev sandbox, `judge0-server`
-starts and serves `/languages` fine, but every submission fails with
-`Failed to create control group /sys/fs/cgroup/memory/box-1/: No such file
-or directory` — that's a host/runtime limitation, not an application bug.
-Verify actual code execution on a real VM or a Docker host that allows
-privileged containers and exposes cgroups.
+Piston ships with no language runtimes installed — install each one once via
+its package API (packages persist in the `piston_data` volume):
+
+```bash
+curl -X POST http://localhost:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"python","version":"3.12.0"}'
+curl -X POST http://localhost:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"go","version":"1.16.2"}'
+curl -X POST http://localhost:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"java","version":"15.0.2"}'
+curl -X POST http://localhost:2000/api/v2/packages -H "Content-Type: application/json" -d '{"language":"gcc","version":"10.2.0"}'   # covers both c and c++
+```
+
+Confirm with `curl http://localhost:2000/api/v2/runtimes`.

@@ -29,7 +29,6 @@ enum Language {
   JAVA
   PYTHON
   GO
-  SCALA
   SQL
 }
 

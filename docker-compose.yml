@@ -17,49 +17,19 @@ services:
     ports:
       - "6380:6379"
 
-  # judge0 (code execution engine, self-hosted) — used for DSA (non-SQL)
-  # submissions. Runs its own Postgres + Redis, separate from the app's
-  # `postgres`/`redis` above, per Judge0's standard self-hosted layout.
-  # `privileged: true` is required by judge0's `isolate` sandbox, which
-  # needs cgroup access that a locked-down container runtime may not grant
-  # — see README for the known sandbox limitation.
-  judge0-server:
-    image: judge0/judge0:1.13.0
+  # piston (code execution engine, self-hosted) — used for DSA (non-SQL)
+  # submissions. `privileged: true` is required by Piston's own sandboxing.
+  # Language runtimes (python/go/java/c/c++) live in the `piston_data` volume,
+  # installed via its package API — see README for setup.
+  piston:
+    image: ghcr.io/engineer-man/piston
     restart: unless-stopped
     privileged: true
     ports:
-      - "2358:2358"
+      - "2000:2000"
     volumes:
-      - ./judge0.conf:/judge0.conf:ro
-    depends_on:
-      - judge0-db
-      - judge0-redis
-
-  judge0-workers:
-    image: judge0/judge0:1.13.0
-    restart: unless-stopped
-    privileged: true
-    command: ["./scripts/workers"]
-    volumes:
-      - ./judge0.conf:/judge0.conf:ro
-    depends_on:
-      - judge0-db
-      - judge0-redis
-
-  judge0-db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    env_file: judge0.conf
-    volumes:
-      - judge0_postgres_data:/var/lib/postgresql/data
-
-  judge0-redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    env_file: judge0.conf
-    command: >
-      sh -c 'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"'
+      - piston_data:/piston
 
 volumes:
   postgres_data:
-  judge0_postgres_data:
+  piston_data:

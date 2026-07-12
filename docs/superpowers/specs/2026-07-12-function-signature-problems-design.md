@@ -8,7 +8,6 @@ Amends the original [code judge platform design](2026-07-12-code-judge-platform-
 
 - Admin defines a function signature (name, typed params, return type) per DSA problem.
 - Student's editor shows only a language-appropriate function stub — no visible driver/boilerplate, matching real LeetCode.
-- Grading still goes through Judge0 via stdin/stdout (per the original design) — the function signature only changes what the student sees and how their code gets wrapped before execution, not the execution model itself.
 - Support a bounded, concrete type set — not arbitrary user-defined classes. This was explicitly scoped down during design: "every type including custom classes" was rejected as an open-ended general-serialization problem; instead we support primitives, arrays, and the two structures LeetCode itself repeatedly reuses (`ListNode`, `TreeNode`).
 
 ## Non-Goals
