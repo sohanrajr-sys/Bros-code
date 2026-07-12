@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "worker": "tsx src/worker/index.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -15,6 +16,8 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "bullmq": "^5.80.2",
+    "ioredis": "^5.10.1",
     "next": "16.2.10",
     "pg": "^8.22.0",
     "react": "19.2.4",

@@ -17,10 +17,49 @@ services:
     ports:
       - "6380:6379"
 
-  # judge0 (code execution engine) and the app's own container image are
-  # added when the judge worker is built (see docs/superpowers/plans) —
-  # for now the Next.js app runs locally via `npm run dev` against these
-  # two services.
+  # judge0 (code execution engine, self-hosted) — used for DSA (non-SQL)
+  # submissions. Runs its own Postgres + Redis, separate from the app's
+  # `postgres`/`redis` above, per Judge0's standard self-hosted layout.
+  # `privileged: true` is required by judge0's `isolate` sandbox, which
+  # needs cgroup access that a locked-down container runtime may not grant
+  # — see README for the known sandbox limitation.
+  judge0-server:
+    image: judge0/judge0:1.13.0
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "2358:2358"
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    depends_on:
+      - judge0-db
+      - judge0-redis
+
+  judge0-workers:
+    image: judge0/judge0:1.13.0
+    restart: unless-stopped
+    privileged: true
+    command: ["./scripts/workers"]
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    depends_on:
+      - judge0-db
+      - judge0-redis
+
+  judge0-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: judge0.conf
+    volumes:
+      - judge0_postgres_data:/var/lib/postgresql/data
+
+  judge0-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    env_file: judge0.conf
+    command: >
+      sh -c 'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"'
 
 volumes:
   postgres_data:
+  judge0_postgres_data:
