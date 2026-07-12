@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: judge
+      POSTGRES_PASSWORD: judge
+      POSTGRES_DB: judge
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+
+  # judge0 (code execution engine) and the app's own container image are
+  # added when the judge worker is built (see docs/superpowers/plans) —
+  # for now the Next.js app runs locally via `npm run dev` against these
+  # two services.
+
+volumes:
+  postgres_data:
