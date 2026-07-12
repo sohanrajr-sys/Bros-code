@@ -45,10 +45,18 @@ export async function POST(
 
   // "Run" only grades sample (non-hidden) test cases and is never persisted as
   // a Submission — it's a fast, ungraded preview before a real Submit.
-  const outcome =
-    problem.type === "SQL"
-      ? await gradeSql(`run_${randomUUID()}`, code, problem.testCases)
-      : await gradeDsa(language as Language, code, problem.testCases, problem.functionSignature);
+  try {
+    const outcome =
+      problem.type === "SQL"
+        ? await gradeSql(`run_${randomUUID()}`, code, problem.testCases)
+        : await gradeDsa(language as Language, code, problem.testCases, problem.functionSignature);
 
-  return NextResponse.json(outcome);
+    return NextResponse.json(outcome);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: `Execution failed: ${message}` },
+      { status: 502 }
+    );
+  }
 }

@@ -38,6 +38,19 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+// The server can fail before producing a JSON body (e.g. an unhandled
+// exception yields an empty response) — res.json() throws a confusing
+// "Unexpected end of JSON input" in that case, so parse defensively.
+async function parseJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text) return { error: `Request failed with status ${res.status}` };
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: `Unexpected response (status ${res.status})` };
+  }
+}
+
 export function SolveWorkspace({
   problemId,
   problemType,
@@ -89,9 +102,9 @@ export function SolveWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language, code }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "run failed");
-      setRunResult(data as GradeResult);
+      const data = await parseJsonResponse(res);
+      if (!res.ok) throw new Error((data.error as string) ?? "run failed");
+      setRunResult(data as unknown as GradeResult);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -112,8 +125,8 @@ export function SolveWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, language, code }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "submit failed");
+      const data = await parseJsonResponse(res);
+      if (!res.ok) throw new Error((data.error as string) ?? "submit failed");
 
       const submissionId = data.submissionId as string;
       const source = new EventSource(`/api/submissions/${submissionId}/stream`);
