@@ -15,6 +15,7 @@ Authentication is **out of scope** for this project — a teammate is building a
 - All problem/submission functionality is available both through the web UI and through a REST API, so the "problem editor" and "code editor" can be reused/embedded elsewhere (e.g., an LMS) later.
 - Visual theme distinct from stock LeetCode (navy/cyan/mint) while keeping a familiar, recognizable layout.
 - Runs 6 languages safely via a sandboxed execution engine, without building custom sandboxing infrastructure from scratch.
+- Entire UI is fully responsive (mobile, tablet, desktop) and visually polished — no layout breakage, overflow, or unstyled states at any breakpoint. This applies to every screen: problem list, solve page (split panel collapses to stacked/tabbed view on mobile), and admin authoring UI.
 
 ## Non-Goals
 
@@ -29,7 +30,7 @@ Three cooperating pieces, all deployable via a single `docker-compose.yml`:
 
 1. **Web app (Next.js, App Router, TypeScript)**
    - Problem list / browse page
-   - Solve page: LeetCode-style split panel — problem description (left) + Monaco-based code editor (right), language selector, Run (sample tests) and Submit (full grading) actions
+   - Solve page: LeetCode-style split panel — problem description (left) + Monaco-based code editor (right), language selector, Run (sample tests) and Submit (full grading) actions. On mobile/narrow viewports, the split panel collapses into a tabbed view (Description / Code / Results) instead of a squeezed side-by-side layout.
    - Admin authoring UI (role-gated): create/edit problems, manage test cases
    - Pages avoid hard dependencies on a top-level nav/layout so they can be safely rendered inside an iframe later; auth/session is read via a pluggable hook (see Auth Integration).
 
@@ -116,6 +117,16 @@ Layout mirrors LeetCode's structure (problem panel + editor panel) but uses a di
 - Keyword highlight: warm amber (`#f0c674`)
 
 Implemented as Tailwind theme tokens (not hardcoded colors) so the palette can be swapped later without touching component logic.
+
+## Responsiveness
+
+Every screen is built mobile-first with Tailwind breakpoints — no fixed-width layouts, no horizontal scroll, no overlapping/cut-off elements at any viewport width. Specifics:
+
+- **Problem list:** table layout on desktop collapses to a stacked card list on mobile (difficulty/tags shown as compact badges).
+- **Solve page:** side-by-side panels on desktop/tablet-landscape; tabbed single-column view (Description / Code / Results) below the `md` breakpoint. Editor toolbar (language selector, Run, Submit) stays reachable without scrolling on small screens.
+- **Admin authoring UI:** form layouts stack to single column on mobile; test-case editor list remains usable via touch (no reliance on hover-only affordances).
+- Touch targets sized appropriately (min 44px) on all interactive controls; no hover-only interactions without a touch/tap equivalent.
+- This is treated as a first-class acceptance criterion, not a follow-up pass — components are built responsive from the start rather than retrofitted.
 
 ## Deployment
 
