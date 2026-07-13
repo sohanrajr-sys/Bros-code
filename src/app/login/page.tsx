@@ -78,7 +78,7 @@ export default async function StudentLoginPage({
 
           <button
             type="submit"
-            className="min-h-[44px] rounded bg-cyan/15 px-4 text-sm font-medium text-cyan hover:bg-cyan/25"
+            className="min-h-[44px] rounded bg-cyan/15 px-4 text-sm font-medium text-cyan transition-colors hover:bg-cyan/25"
           >
             Sign in
           </button>

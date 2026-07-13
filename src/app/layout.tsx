@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Code Judge",
-  description: "Practice DSA and SQL problems across 6 languages.",
+  title: "Academic OS",
+  description: "Practice DSA and SQL problems across 5 languages.",
 };
 
 export default function RootLayout({

@@ -13,6 +13,14 @@ async function getStudents() {
   });
 }
 
+function formatJoinedDate(date: Date): string {
+  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} days ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default async function AdminStudentsPage() {
   const user = await getSessionUserFromCookies();
   if (!user || user.role !== "admin") {
@@ -47,7 +55,7 @@ export default async function AdminStudentsPage() {
                 <span className="font-medium text-foreground">{student.name}</span>
                 <span className="ml-2 text-xs text-text-muted">{student.studentId}</span>
               </div>
-              <span className="rounded bg-mint/15 px-2 py-0.5 text-xs text-mint">Active</span>
+              <span className="text-xs text-text-muted">Joined {formatJoinedDate(student.createdAt)}</span>
             </li>
           ))}
         </ul>

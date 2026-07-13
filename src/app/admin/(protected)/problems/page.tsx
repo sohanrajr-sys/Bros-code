@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserFromCookies } from "@/lib/session";
 import { DifficultyBadge } from "@/components/DifficultyBadge";
 import { Forbidden } from "@/components/admin/Forbidden";
+import { DeleteProblemButton } from "@/components/admin/DeleteProblemButton";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function AdminProblemsPage() {
         </div>
         <Link
           href="/admin/problems/new"
-          className="inline-flex min-h-[44px] items-center justify-center rounded bg-cyan/15 px-4 text-sm font-medium text-cyan hover:bg-cyan/25"
+          className="inline-flex min-h-[44px] items-center justify-center rounded bg-cyan/15 px-4 text-sm font-medium text-cyan transition-colors hover:bg-cyan/25"
         >
           New problem
         </Link>
@@ -92,18 +93,13 @@ export default async function AdminProblemsPage() {
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
                     href={`/admin/problems/${problem.id}/edit`}
-                    className="inline-flex min-h-[44px] items-center justify-center rounded border border-navy-border px-3 text-sm text-foreground hover:border-cyan hover:text-cyan"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded border border-navy-border px-3 text-sm text-foreground transition-colors hover:border-cyan hover:text-cyan"
                   >
                     Edit
                   </Link>
                   <form action={deleteProblem}>
                     <input type="hidden" name="id" value={problem.id} />
-                    <button
-                      type="submit"
-                      className="inline-flex min-h-[44px] items-center justify-center rounded border border-navy-border px-3 text-sm text-danger hover:border-danger"
-                    >
-                      Delete
-                    </button>
+                    <DeleteProblemButton title={problem.title} />
                   </form>
                 </div>
               </div>
