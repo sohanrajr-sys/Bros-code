@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { submissionsQueue } from "@/lib/queue";
 import { Language } from "@/generated/prisma/enums";
+import { getSessionUser } from "@/lib/session";
 
 interface CreateSubmissionBody {
-  userId?: unknown;
   language?: unknown;
   code?: unknown;
 }
@@ -13,6 +13,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const sessionUser = await getSessionUser(request);
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id: problemId } = await params;
 
   let body: CreateSubmissionBody;
@@ -22,11 +27,8 @@ export async function POST(
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
-  const { userId, language, code } = body;
+  const { language, code } = body;
 
-  if (typeof userId !== "string" || userId.length === 0) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
-  }
   if (typeof code !== "string" || code.length === 0) {
     return NextResponse.json({ error: "code is required" }, { status: 400 });
   }
@@ -44,7 +46,7 @@ export async function POST(
 
   const submission = await prisma.submission.create({
     data: {
-      userId,
+      userId: sessionUser.userId,
       problemId,
       language: language as Language,
       code,

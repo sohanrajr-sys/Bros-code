@@ -1,39 +1,37 @@
 import { cookies } from "next/headers";
+import { verifySession, SESSION_COOKIE_NAME, type SessionPayload } from "@/lib/jwt";
 
 export type Role = "admin" | "student";
 
 export type SessionUser = {
   userId: string;
   role: Role;
+  name: string;
+  loginId: string; // email (admin) or Student ID (student)
 };
 
-function readCookie(cookieHeader: string, name: string): string | null {
-  const match = cookieHeader.match(
-    new RegExp(`(?:^|;\\s*)${name}=([^;]+)`),
-  );
-  return match ? decodeURIComponent(match[1]) : null;
+function toSessionUser(payload: SessionPayload | null): SessionUser | null {
+  if (!payload) return null;
+  return {
+    userId: payload.sub,
+    role: payload.role === "ADMIN" ? "admin" : "student",
+    name: payload.name,
+    loginId: payload.loginId,
+  };
 }
 
-function resolve(role: string | null, userId: string | null): SessionUser {
-  if (role === "admin" || role === "student") {
-    return { userId: userId ?? (role === "admin" ? "dev-admin" : "dev-student"), role };
-  }
-  return { userId: "dev-student", role: "student" };
-}
-
-// TEMPORARY: replaced by real auth integration (see teammate's auth work). Only reads debug headers for now.
-export function getSessionUser(req: Request): SessionUser | null {
+export async function getSessionUser(req: Request): Promise<SessionUser | null> {
   const cookieHeader = req.headers.get("cookie") ?? "";
-  const role = req.headers.get("x-debug-role") ?? readCookie(cookieHeader, "debug-role");
-  const userId = req.headers.get("x-debug-user-id") ?? readCookie(cookieHeader, "debug-user-id");
-  return resolve(role, userId);
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]+)`));
+  const token = match ? decodeURIComponent(match[1]) : null;
+  if (!token) return null;
+  return toSessionUser(await verifySession(token));
 }
 
-// TEMPORARY: replaced by real auth integration (see teammate's auth work). Only reads debug headers for now.
 // For server components / layouts, which get cookies via next/headers rather than a Request object.
 export async function getSessionUserFromCookies(): Promise<SessionUser | null> {
   const store = await cookies();
-  const role = store.get("debug-role")?.value ?? null;
-  const userId = store.get("debug-user-id")?.value ?? null;
-  return resolve(role, userId);
+  const token = store.get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return null;
+  return toSessionUser(await verifySession(token));
 }
