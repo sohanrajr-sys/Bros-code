@@ -28,7 +28,7 @@ export default async function AppLayout({
             <form action={logout}>
               <button
                 type="submit"
-                className="min-h-[44px] rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground hover:border-cyan hover:text-cyan"
+                className="min-h-[44px] rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground transition-colors hover:border-cyan hover:text-cyan"
               >
                 Log out
               </button>

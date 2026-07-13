@@ -1,9 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { bulkCreateStudents, type BulkCreateState } from "./actions";
 
 const initialState: BulkCreateState = {};
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="rounded border border-navy-border px-2 py-0.5 text-xs text-text-muted transition-colors hover:border-cyan hover:text-cyan"
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
 
 export function BulkAddForm() {
   const [state, formAction, pending] = useActionState(bulkCreateStudents, initialState);
@@ -26,7 +43,7 @@ export function BulkAddForm() {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex min-h-[44px] w-fit items-center justify-center rounded bg-cyan/15 px-4 text-sm font-medium text-cyan hover:bg-cyan/25 disabled:opacity-50"
+          className="inline-flex min-h-[44px] w-fit items-center justify-center rounded bg-cyan/15 px-4 text-sm font-medium text-cyan transition-colors hover:bg-cyan/25 disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add students"}
         </button>
@@ -36,15 +53,21 @@ export function BulkAddForm() {
 
       {state.created && state.created.length > 0 && (
         <div className="mt-4 rounded border border-amber/30 bg-amber/10 p-3">
-          <p className="text-sm font-medium text-amber">
-            These passwords are shown once — copy them now before leaving this page.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-amber">
+              These passwords are shown once — copy them now before leaving this page.
+            </p>
+            <CopyButton
+              text={state.created.map((s) => `${s.studentId}, ${s.name}, ${s.password}`).join("\n")}
+            />
+          </div>
           <table className="mt-2 w-full text-left text-sm">
             <thead>
               <tr className="text-text-muted">
                 <th className="py-1 pr-4 font-medium">Student ID</th>
                 <th className="py-1 pr-4 font-medium">Name</th>
-                <th className="py-1 font-medium">Password</th>
+                <th className="py-1 pr-4 font-medium">Password</th>
+                <th className="py-1 font-medium" />
               </tr>
             </thead>
             <tbody>
@@ -52,7 +75,10 @@ export function BulkAddForm() {
                 <tr key={s.studentId} className="border-t border-navy-border/60">
                   <td className="py-1 pr-4 text-foreground">{s.studentId}</td>
                   <td className="py-1 pr-4 text-foreground">{s.name}</td>
-                  <td className="py-1 font-mono text-cyan">{s.password}</td>
+                  <td className="py-1 pr-4 font-mono text-cyan">{s.password}</td>
+                  <td className="py-1">
+                    <CopyButton text={s.password} />
+                  </td>
                 </tr>
               ))}
             </tbody>

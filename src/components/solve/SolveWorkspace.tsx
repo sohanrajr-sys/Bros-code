@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
 import type { Language, ProblemType } from "@/generated/prisma/enums";
 import { DSA_LANGUAGES, LANGUAGE_LABELS, MONACO_LANGUAGE_IDS } from "./languageMeta";
+import { renderInlineCode } from "@/lib/inlineCode";
 
 interface SampleTestCase {
   id: string;
@@ -176,11 +177,11 @@ export function SolveWorkspace({
         } border-navy-border p-4 md:block md:w-1/2 md:border-r md:p-6`}
       >
         <div className="whitespace-pre-wrap text-sm leading-relaxed text-text">
-          {description}
+          {renderInlineCode(description)}
           {constraints && (
             <div className="mt-4">
               <h2 className="text-sm font-semibold text-foreground">Constraints</h2>
-              <p className="mt-1 text-text-muted">{constraints}</p>
+              <p className="mt-1 text-text-muted">{renderInlineCode(constraints)}</p>
             </div>
           )}
           {sampleTestCases.length > 0 && (
@@ -226,7 +227,7 @@ export function SolveWorkspace({
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
               disabled={availableLanguages.length === 1}
-              className="min-h-[44px] rounded border border-navy-border bg-navy-950 px-2 text-sm text-foreground"
+              className="select-field min-h-[44px] rounded border border-navy-border bg-navy-950 px-2 text-sm text-foreground disabled:opacity-60"
             >
               {availableLanguages.map((lang) => (
                 <option key={lang} value={lang}>
@@ -238,16 +239,16 @@ export function SolveWorkspace({
               <button
                 onClick={handleRun}
                 disabled={running || submitting}
-                className="min-h-[44px] rounded bg-navy-800 px-4 text-sm font-medium text-cyan disabled:opacity-50"
+                className="min-h-[44px] rounded bg-navy-800 px-4 text-sm font-medium text-cyan transition-colors hover:bg-navy-border disabled:opacity-50"
               >
-                {running ? "Running..." : "Run"}
+                {running ? "Running…" : "Run"}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={running || submitting}
-                className="min-h-[44px] rounded bg-mint px-4 text-sm font-medium text-navy-950 disabled:opacity-50"
+                className="min-h-[44px] rounded bg-mint px-4 text-sm font-medium text-navy-950 transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                {submitting ? "Submitting..." : "Submit"}
+                {submitting ? "Submitting…" : "Submit"}
               </button>
             </div>
           </div>
@@ -307,6 +308,15 @@ function ResultDetail({ label, result }: { label: string; result: GradeResult })
         {label}: {result.passed ? "Passed" : "Failed"} ({cases.filter((c) => c.passed).length}/
         {cases.length} test cases)
       </p>
+      <div className="mt-2 flex flex-wrap gap-1" aria-hidden="true">
+        {cases.map((c) => (
+          <span
+            key={c.testCaseId}
+            title={`${c.isHidden ? "Hidden" : "Sample"} test case — ${c.passed ? "passed" : "failed"}`}
+            className={`h-2.5 w-2.5 rounded-full ${c.passed ? "bg-mint" : "bg-danger"} ${c.isHidden ? "opacity-60" : ""}`}
+          />
+        ))}
+      </div>
       {!result.passed && firstFailure && (
         <div className="mt-2 rounded border border-navy-border bg-navy-950 p-3 text-xs">
           <div className="mb-1 text-text-muted">First failing test case</div>

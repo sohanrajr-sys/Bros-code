@@ -81,7 +81,7 @@ export default async function AdminLoginPage({
 
           <button
             type="submit"
-            className="min-h-[44px] rounded bg-foreground px-4 text-sm font-medium text-navy-950 hover:opacity-90"
+            className="min-h-[44px] rounded bg-foreground px-4 text-sm font-medium text-navy-950 transition-opacity hover:opacity-90"
           >
             Sign in
           </button>

@@ -211,7 +211,7 @@ export function ProblemForm({
             onChange={(e) =>
               setForm((p) => ({ ...p, difficulty: e.target.value as ProblemFormInitial["difficulty"] }))
             }
-            className="min-h-[44px] w-full rounded border border-navy-border bg-navy-900 px-3 text-foreground"
+            className="select-field min-h-[44px] w-full rounded border border-navy-border bg-navy-900 px-3 text-foreground"
           >
             <option value="EASY">Easy</option>
             <option value="MEDIUM">Medium</option>
@@ -224,7 +224,7 @@ export function ProblemForm({
           <select
             value={form.type}
             onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as ProblemFormInitial["type"] }))}
-            className="min-h-[44px] w-full rounded border border-navy-border bg-navy-900 px-3 text-foreground"
+            className="select-field min-h-[44px] w-full rounded border border-navy-border bg-navy-900 px-3 text-foreground"
           >
             <option value="DSA">DSA</option>
             <option value="SQL">SQL</option>
@@ -265,7 +265,7 @@ export function ProblemForm({
               <button
                 type="button"
                 onClick={addParam}
-                className="min-h-[44px] rounded border border-navy-border px-3 text-sm text-cyan hover:border-cyan"
+                className="min-h-[44px] rounded border border-navy-border px-3 text-sm text-cyan transition-colors hover:border-cyan"
               >
                 Add parameter
               </button>
@@ -282,7 +282,7 @@ export function ProblemForm({
                   <select
                     value={p.type}
                     onChange={(e) => updateParam(i, { type: e.target.value as ParamType })}
-                    className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground sm:w-40"
+                    className="select-field min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground sm:w-40"
                   >
                     {PARAM_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -294,7 +294,7 @@ export function ProblemForm({
                     <button
                       type="button"
                       onClick={() => removeParam(i)}
-                      className="min-h-[44px] rounded px-3 text-sm text-danger hover:bg-danger/10"
+                      className="min-h-[44px] rounded px-3 text-sm text-danger transition-colors hover:bg-danger/10"
                     >
                       Remove
                     </button>
@@ -309,7 +309,7 @@ export function ProblemForm({
             <select
               value={form.functionSignature?.returnType ?? "int"}
               onChange={(e) => updateSignature({ returnType: e.target.value as ParamType })}
-              className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground sm:max-w-xs"
+              className="select-field min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 text-sm text-foreground sm:max-w-xs"
             >
               {PARAM_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -348,7 +348,7 @@ export function ProblemForm({
           <button
             type="button"
             onClick={addTestCase}
-            className="min-h-[44px] rounded border border-navy-border px-3 text-sm text-cyan hover:border-cyan"
+            className="min-h-[44px] rounded border border-navy-border px-3 text-sm text-cyan transition-colors hover:border-cyan"
           >
             Add test case
           </button>
@@ -366,7 +366,7 @@ export function ProblemForm({
                   <button
                     type="button"
                     onClick={() => removeTestCase(index)}
-                    className="min-h-[44px] rounded px-3 text-sm text-danger hover:bg-danger/10"
+                    className="min-h-[44px] rounded px-3 text-sm text-danger transition-colors hover:bg-danger/10"
                   >
                     Remove
                   </button>
@@ -425,7 +425,7 @@ export function ProblemForm({
         <button
           type="submit"
           disabled={submitting}
-          className="min-h-[44px] w-full rounded bg-cyan/15 px-4 text-sm font-medium text-cyan hover:bg-cyan/25 disabled:opacity-50 sm:w-auto"
+          className="min-h-[44px] w-full rounded bg-cyan/15 px-4 text-sm font-medium text-cyan transition-colors hover:bg-cyan/25 disabled:opacity-50 sm:w-auto"
         >
           {submitting ? "Saving..." : mode === "create" ? "Create problem" : "Save changes"}
         </button>
