@@ -204,12 +204,12 @@ model QuizCodingQuestion {
 }
 
 model QuizCodingTestCase {
-  id                String  @id @default(cuid())
-  codingQuestionId  String
-  input             String
-  expectedOutput    String
-  isHidden          Boolean @default(false)
-  order             Int
+  id               String  @id @default(cuid())
+  codingQuestionId String
+  input            String
+  expectedOutput   String
+  isHidden         Boolean @default(false)
+  order            Int
 
   codingQuestion QuizCodingQuestion @relation(fields: [codingQuestionId], references: [id], onDelete: Cascade)
 
@@ -231,9 +231,9 @@ model QuizAttempt {
   user    User         @relation(fields: [userId], references: [id])
   answers QuizAnswer[]
 
+  @@unique([quizId, userId, attemptNumber])
   @@index([quizId])
   @@index([userId])
-  @@unique([quizId, userId, attemptNumber])
 }
 
 model QuizAnswer {
@@ -250,10 +250,13 @@ model QuizAnswer {
   overriddenScore Float?
   gradingStatus   GradingStatus @default(PENDING)
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   attempt  QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
+  @@unique([attemptId, questionId])
   @@index([attemptId])
   @@index([questionId])
-  @@unique([attemptId, questionId])
 }
