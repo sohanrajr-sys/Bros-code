@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scoreMcq, scoreShortAnswerDescriptive } from "./quizScoring";
+import { scoreMcq, scoreShortAnswerDescriptive, effectiveScore, weightsSumTo100 } from "./quizScoring";
 
 describe("scoreMcq — ALL_OR_NOTHING", () => {
   it("awards full weight when the selected set exactly matches the correct set", () => {
@@ -114,5 +114,34 @@ describe("scoreShortAnswerDescriptive", () => {
   it("awards zero on an empty answer", () => {
     const score = scoreShortAnswerDescriptive("", ["anything"], 15);
     expect(score).toBe(0);
+  });
+});
+
+describe("effectiveScore", () => {
+  it("uses the override when present, even if it's zero", () => {
+    expect(effectiveScore(10, 0)).toBe(0);
+  });
+
+  it("falls back to autoScore when there's no override", () => {
+    expect(effectiveScore(10, null)).toBe(10);
+  });
+
+  it("falls back to zero when neither is set", () => {
+    expect(effectiveScore(null, null)).toBe(0);
+  });
+});
+
+describe("weightsSumTo100", () => {
+  it("is true when weights sum to exactly 100", () => {
+    expect(weightsSumTo100([50, 30, 20])).toBe(true);
+  });
+
+  it("is false when weights sum to anything else", () => {
+    expect(weightsSumTo100([50, 30, 19])).toBe(false);
+    expect(weightsSumTo100([50, 30, 21])).toBe(false);
+  });
+
+  it("is false for an empty question list", () => {
+    expect(weightsSumTo100([])).toBe(false);
   });
 });

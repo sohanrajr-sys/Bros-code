@@ -37,3 +37,14 @@ export function scoreShortAnswerDescriptive(
   const matched = acceptedKeywords.some((keyword) => normalized.includes(keyword.toLowerCase()));
   return matched ? weight : 0;
 }
+
+export function effectiveScore(autoScore: number | null, overriddenScore: number | null): number {
+  if (overriddenScore !== null) return overriddenScore;
+  if (autoScore !== null) return autoScore;
+  return 0;
+}
+
+export function weightsSumTo100(weights: number[]): boolean {
+  if (weights.length === 0) return false;
+  return weights.reduce((sum, w) => sum + w, 0) === 100;
+}
