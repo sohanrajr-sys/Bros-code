@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scoreMcq } from "./quizScoring";
+import { scoreMcq, scoreShortAnswerDescriptive } from "./quizScoring";
 
 describe("scoreMcq — ALL_OR_NOTHING", () => {
   it("awards full weight when the selected set exactly matches the correct set", () => {
@@ -92,5 +92,27 @@ describe("scoreMcq — PROPORTIONAL", () => {
       weight: 10,
     });
     expect(score).toBe(3.33); // 1/3 * 10 = 3.333...
+  });
+});
+
+describe("scoreShortAnswerDescriptive", () => {
+  it("awards full weight on a case-insensitive keyword match", () => {
+    const score = scoreShortAnswerDescriptive("The answer is O(log n)", ["o(log n)"], 15);
+    expect(score).toBe(15);
+  });
+
+  it("matches any one of several accepted keywords", () => {
+    const score = scoreShortAnswerDescriptive("binary search tree", ["bst", "binary search tree"], 15);
+    expect(score).toBe(15);
+  });
+
+  it("awards zero when no keyword matches", () => {
+    const score = scoreShortAnswerDescriptive("linked list", ["array", "hash map"], 15);
+    expect(score).toBe(0);
+  });
+
+  it("awards zero on an empty answer", () => {
+    const score = scoreShortAnswerDescriptive("", ["anything"], 15);
+    expect(score).toBe(0);
   });
 });

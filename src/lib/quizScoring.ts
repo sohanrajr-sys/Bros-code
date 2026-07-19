@@ -27,3 +27,13 @@ export function scoreMcq(input: McqScoreInput): number {
   const fraction = Math.max(0, correctPicks - wrongPicks) / correct.size;
   return round2(fraction * weight);
 }
+
+export function scoreShortAnswerDescriptive(
+  textAnswer: string,
+  acceptedKeywords: string[],
+  weight: number
+): number {
+  const normalized = textAnswer.toLowerCase();
+  const matched = acceptedKeywords.some((keyword) => normalized.includes(keyword.toLowerCase()));
+  return matched ? weight : 0;
+}
