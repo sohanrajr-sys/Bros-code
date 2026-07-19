@@ -42,3 +42,55 @@ describe("scoreMcq — ALL_OR_NOTHING", () => {
     expect(score).toBe(0);
   });
 });
+
+describe("scoreMcq — PROPORTIONAL", () => {
+  it("awards full weight for an exact match", () => {
+    const score = scoreMcq({
+      selectedOptionIds: ["a", "b"],
+      correctOptionIds: ["a", "b"],
+      scoringMode: "PROPORTIONAL",
+      weight: 30,
+    });
+    expect(score).toBe(30);
+  });
+
+  it("awards partial credit for a partial match (2 of 3 correct)", () => {
+    const score = scoreMcq({
+      selectedOptionIds: ["a", "b"],
+      correctOptionIds: ["a", "b", "c"],
+      scoringMode: "PROPORTIONAL",
+      weight: 30,
+    });
+    expect(score).toBe(20); // 2/3 * 30
+  });
+
+  it("subtracts wrong picks from the credit", () => {
+    const score = scoreMcq({
+      selectedOptionIds: ["a", "b", "wrong"],
+      correctOptionIds: ["a", "b", "c"],
+      scoringMode: "PROPORTIONAL",
+      weight: 30,
+    });
+    expect(score).toBe(10); // (2 correct - 1 wrong) / 3 * 30
+  });
+
+  it("floors at zero when wrong picks outweigh correct ones", () => {
+    const score = scoreMcq({
+      selectedOptionIds: ["wrong1", "wrong2", "wrong3"],
+      correctOptionIds: ["a"],
+      scoringMode: "PROPORTIONAL",
+      weight: 30,
+    });
+    expect(score).toBe(0);
+  });
+
+  it("rounds to 2 decimal places", () => {
+    const score = scoreMcq({
+      selectedOptionIds: ["a"],
+      correctOptionIds: ["a", "b", "c"],
+      scoringMode: "PROPORTIONAL",
+      weight: 10,
+    });
+    expect(score).toBe(3.33); // 1/3 * 10 = 3.333...
+  });
+});

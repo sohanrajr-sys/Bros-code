@@ -22,6 +22,8 @@ export function scoreMcq(input: McqScoreInput): number {
     return exactMatch ? weight : 0;
   }
 
-  // PROPORTIONAL — implemented in Task 4
-  return 0;
+  const correctPicks = [...selected].filter((id) => correct.has(id)).length;
+  const wrongPicks = selected.size - correctPicks;
+  const fraction = Math.max(0, correctPicks - wrongPicks) / correct.size;
+  return round2(fraction * weight);
 }
