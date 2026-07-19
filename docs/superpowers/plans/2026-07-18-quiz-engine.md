@@ -623,14 +623,14 @@ describe("scoreMcq — PROPORTIONAL", () => {
     expect(score).toBe(20); // 2/3 * 30
   });
 
-  it("subtracts wrong picks from the credit, floored at zero", () => {
+  it("subtracts wrong picks from the credit", () => {
     const score = scoreMcq({
-      selectedOptionIds: ["a", "wrong"],
-      correctOptionIds: ["a", "b"],
+      selectedOptionIds: ["a", "b", "wrong"],
+      correctOptionIds: ["a", "b", "c"],
       scoringMode: "PROPORTIONAL",
       weight: 30,
     });
-    expect(score).toBe(15); // (1 correct - 1 wrong) / 2 * 30
+    expect(score).toBe(10); // (2 correct - 1 wrong) / 3 * 30
   });
 
   it("floors at zero when wrong picks outweigh correct ones", () => {
