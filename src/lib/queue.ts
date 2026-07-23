@@ -18,3 +18,21 @@ export const submissionsQueue =
 if (process.env.NODE_ENV !== "production") {
   globalForQueue.submissionsQueue = submissionsQueue;
 }
+
+export const QUIZ_GRADING_QUEUE = "quiz-grading";
+
+export interface QuizGradingJobData {
+  quizAnswerId: string;
+}
+
+const globalForQuizQueue = globalThis as unknown as {
+  quizGradingQueue: Queue<QuizGradingJobData> | undefined;
+};
+
+export const quizGradingQueue =
+  globalForQuizQueue.quizGradingQueue ??
+  new Queue<QuizGradingJobData>(QUIZ_GRADING_QUEUE, { connection: redisConnection });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForQuizQueue.quizGradingQueue = quizGradingQueue;
+}
