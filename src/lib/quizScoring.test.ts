@@ -93,6 +93,16 @@ describe("scoreMcq — PROPORTIONAL", () => {
     });
     expect(score).toBe(3.33); // 1/3 * 10 = 3.333...
   });
+
+  it("returns zero when there are no correct options to compare against", () => {
+    const score = scoreMcq({
+      selectedOptionIds: ["a"],
+      correctOptionIds: [],
+      scoringMode: "PROPORTIONAL",
+      weight: 30,
+    });
+    expect(score).toBe(0);
+  });
 });
 
 describe("scoreShortAnswerDescriptive", () => {
@@ -143,5 +153,9 @@ describe("weightsSumTo100", () => {
 
   it("is false for an empty question list", () => {
     expect(weightsSumTo100([])).toBe(false);
+  });
+
+  it("tolerates float drift from summing non-integer weights", () => {
+    expect(weightsSumTo100([30.22, 61.36, 5.96, 2.3, 0.02, 0.14])).toBe(true);
   });
 });

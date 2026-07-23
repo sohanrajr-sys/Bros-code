@@ -24,6 +24,7 @@ export function scoreMcq(input: McqScoreInput): number {
 
   const correctPicks = [...selected].filter((id) => correct.has(id)).length;
   const wrongPicks = selected.size - correctPicks;
+  if (correct.size === 0) return 0;
   const fraction = Math.max(0, correctPicks - wrongPicks) / correct.size;
   return round2(fraction * weight);
 }
@@ -46,5 +47,5 @@ export function effectiveScore(autoScore: number | null, overriddenScore: number
 
 export function weightsSumTo100(weights: number[]): boolean {
   if (weights.length === 0) return false;
-  return weights.reduce((sum, w) => sum + w, 0) === 100;
+  return round2(weights.reduce((sum, w) => sum + w, 0)) === 100;
 }
