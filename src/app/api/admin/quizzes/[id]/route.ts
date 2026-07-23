@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-import { quizInputSchema } from "@/lib/quizSchema";
+import { quizInputSchema, buildQuestionCreateInput, questionsUnchanged } from "@/lib/quizSchema";
 import { weightsSumTo100 } from "@/lib/quizScoring";
-import { buildQuestionCreateInput } from "../route";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -40,7 +39,13 @@ export async function PUT(req: Request, { params }: RouteParams) {
   const { id } = await params;
   const existing = await prisma.quiz.findUnique({
     where: { id },
-    include: { _count: { select: { attempts: true } } },
+    include: {
+      _count: { select: { attempts: true } },
+      questions: {
+        orderBy: { order: "asc" },
+        include: { mcqOptions: { orderBy: { order: "asc" } }, codingQuestion: { include: { testCases: { orderBy: { order: "asc" } } } } },
+      },
+    },
   });
   if (!existing) {
     return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
@@ -61,10 +66,14 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
   const { questions, ...quizFields } = result.data;
 
-  // Editing the question set would cascade-delete any existing attempts'
+  // Replacing the question set would cascade-delete any existing attempts'
   // answers (QuizAnswer -> QuizQuestion is onDelete: Cascade). Once a quiz
-  // has real attempts, only its metadata (title, window, etc.) can change.
-  if (existing._count.attempts > 0) {
+  // has real attempts, question edits are blocked — but metadata (title,
+  // schedule, etc.) can still change freely, so only reject when the
+  // submitted questions actually differ from what's stored.
+  const hasAttempts = existing._count.attempts > 0;
+  const unchanged = hasAttempts && questionsUnchanged(questions, existing.questions);
+  if (hasAttempts && !unchanged) {
     return NextResponse.json(
       {
         error: `This quiz already has ${existing._count.attempts} attempt(s) — its questions can't be edited. Only title, description, and scheduling can change.`,
@@ -87,10 +96,16 @@ export async function PUT(req: Request, { params }: RouteParams) {
     where: { id },
     data: {
       ...quizFields,
-      questions: {
-        deleteMany: {},
-        create: questions.map((q) => buildQuestionCreateInput(q)),
-      },
+      // If there are attempts, `unchanged` is the only way past the guard
+      // above, so the questions relation is deliberately left untouched.
+      ...(hasAttempts
+        ? {}
+        : {
+            questions: {
+              deleteMany: {},
+              create: questions.map((q) => buildQuestionCreateInput(q)),
+            },
+          }),
     },
     include: {
       questions: { include: { mcqOptions: true, codingQuestion: { include: { testCases: true } } } },

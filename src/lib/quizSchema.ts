@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import { functionSignatureSchema } from "./functionSignature";
 
 export const quizTestCaseInputSchema = z.object({
@@ -69,3 +70,100 @@ export const quizInputSchema = z.object({
 
 export type QuizInput = z.infer<typeof quizInputSchema>;
 export type QuizQuestionInput = z.infer<typeof quizQuestionInputSchema>;
+
+/** Shared by the admin quiz create (POST) and update (PUT) routes. */
+export function buildQuestionCreateInput(q: QuizQuestionInput) {
+  if (q.type === "MCQ") {
+    return {
+      order: q.order,
+      weight: q.weight,
+      type: "MCQ" as const,
+      prompt: q.prompt,
+      mcqScoringMode: q.mcqScoringMode,
+      mcqOptions: { create: q.mcqOptions.map((o) => ({ text: o.text, isCorrect: o.isCorrect, order: o.order })) },
+    };
+  }
+  if (q.type === "DESCRIPTIVE") {
+    return {
+      order: q.order,
+      weight: q.weight,
+      type: "DESCRIPTIVE" as const,
+      prompt: q.prompt,
+      descriptiveMode: q.descriptiveMode,
+      acceptedKeywords: q.acceptedKeywords,
+    };
+  }
+  return {
+    order: q.order,
+    weight: q.weight,
+    type: "CODING" as const,
+    codingQuestion: {
+      create: {
+        description: q.description,
+        constraints: q.constraints ?? null,
+        functionSignature: q.functionSignature as unknown as Prisma.InputJsonValue,
+        testCases: { create: q.testCases.map((tc) => ({ ...tc })) },
+      },
+    },
+  };
+}
+
+/** DB-fetched question shape, as returned by the GET/PUT routes' `include`. */
+export interface StoredQuestion {
+  type: "MCQ" | "DESCRIPTIVE" | "CODING";
+  order: number;
+  weight: number;
+  prompt: string | null;
+  mcqScoringMode: "ALL_OR_NOTHING" | "PROPORTIONAL" | null;
+  descriptiveMode: "SHORT_ANSWER" | "LONG_ANSWER" | null;
+  acceptedKeywords: string[];
+  mcqOptions: { text: string; isCorrect: boolean; order: number }[];
+  codingQuestion: {
+    description: string;
+    constraints: string | null;
+    functionSignature: unknown;
+    testCases: { input: string; expectedOutput: string; isHidden: boolean; order: number }[];
+  } | null;
+}
+
+/** Canonical, comparable shape for both a submitted question and a stored one. */
+function canonicalizeQuestion(q: QuizQuestionInput | StoredQuestion): unknown {
+  const base = { type: q.type, order: q.order, weight: q.weight };
+  if (q.type === "MCQ") {
+    return {
+      ...base,
+      prompt: q.prompt,
+      mcqScoringMode: q.mcqScoringMode,
+      mcqOptions: q.mcqOptions.map((o) => ({ text: o.text, isCorrect: o.isCorrect, order: o.order })),
+    };
+  }
+  if (q.type === "DESCRIPTIVE") {
+    return { ...base, prompt: q.prompt, descriptiveMode: q.descriptiveMode, acceptedKeywords: q.acceptedKeywords };
+  }
+  // CODING — submitted input is flat, stored rows nest under `codingQuestion`.
+  const coding = "codingQuestion" in q ? q.codingQuestion : q;
+  return {
+    ...base,
+    description: coding?.description,
+    constraints: coding?.constraints ?? null,
+    functionSignature: coding?.functionSignature,
+    testCases: (coding?.testCases ?? []).map((tc) => ({
+      input: tc.input,
+      expectedOutput: tc.expectedOutput,
+      isHidden: tc.isHidden,
+      order: tc.order,
+    })),
+  };
+}
+
+/**
+ * True if a submitted question set is identical (order included) to what's
+ * already stored — used to allow metadata-only quiz edits (title, schedule,
+ * etc.) once a quiz has real attempts, without permitting the destructive
+ * delete+recreate of `questions` that would cascade-delete those attempts'
+ * answers.
+ */
+export function questionsUnchanged(submitted: QuizQuestionInput[], stored: StoredQuestion[]): boolean {
+  if (submitted.length !== stored.length) return false;
+  return submitted.every((q, i) => JSON.stringify(canonicalizeQuestion(q)) === JSON.stringify(canonicalizeQuestion(stored[i])));
+}

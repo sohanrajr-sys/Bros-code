@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-import { quizInputSchema } from "@/lib/quizSchema";
+import { quizInputSchema, buildQuestionCreateInput } from "@/lib/quizSchema";
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -57,41 +56,4 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ quiz }, { status: 201 });
-}
-
-// Shared with the [id] route's PUT handler.
-export function buildQuestionCreateInput(q: import("@/lib/quizSchema").QuizQuestionInput) {
-  if (q.type === "MCQ") {
-    return {
-      order: q.order,
-      weight: q.weight,
-      type: "MCQ" as const,
-      prompt: q.prompt,
-      mcqScoringMode: q.mcqScoringMode,
-      mcqOptions: { create: q.mcqOptions.map((o) => ({ text: o.text, isCorrect: o.isCorrect, order: o.order })) },
-    };
-  }
-  if (q.type === "DESCRIPTIVE") {
-    return {
-      order: q.order,
-      weight: q.weight,
-      type: "DESCRIPTIVE" as const,
-      prompt: q.prompt,
-      descriptiveMode: q.descriptiveMode,
-      acceptedKeywords: q.acceptedKeywords,
-    };
-  }
-  return {
-    order: q.order,
-    weight: q.weight,
-    type: "CODING" as const,
-    codingQuestion: {
-      create: {
-        description: q.description,
-        constraints: q.constraints ?? null,
-        functionSignature: q.functionSignature as unknown as Prisma.InputJsonValue,
-        testCases: { create: q.testCases.map((tc) => ({ ...tc })) },
-      },
-    },
-  };
 }
