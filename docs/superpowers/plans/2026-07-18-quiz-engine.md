@@ -1690,6 +1690,8 @@ git commit -m "feat: POST/GET /api/admin/quizzes"
 
 ### Task 14: `GET`/`PUT`/`DELETE /api/admin/quizzes/[id]`
 
+> **Amended post-implementation:** code review caught that the PUT handler as originally specified below blocks ALL edits once a quiz has any attempt — including title/schedule-only changes — contradicting its own error message ("Only title, description, and scheduling can change"). The actual shipped fix (commit `5109981`) fetches the quiz's stored questions (not just the attempt count), compares them against the submitted set via a `questionsUnchanged()` comparator added to `src/lib/quizSchema.ts`, and only rejects when they genuinely differ — when unchanged, the update proceeds but skips the `questions` relation write entirely. `buildQuestionCreateInput` also moved from `src/app/api/admin/quizzes/route.ts` into `src/lib/quizSchema.ts` (a second review finding: importing route-to-route was an avoidable smell). The code block below is left as originally planned for historical reference; **the actual behavior in the codebase is the amended version**, not this one.
+
 **Files:**
 - Create: `src/app/api/admin/quizzes/[id]/route.ts`
 
