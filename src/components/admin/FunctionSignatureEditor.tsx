@@ -5,9 +5,11 @@ import { PARAM_TYPES, type FunctionSignature, type ParamType } from "@/lib/funct
 export function FunctionSignatureEditor({
   value,
   onChange,
+  helpText = "Optional. If set, students get a LeetCode-style function stub instead of raw stdin/stdout.",
 }: {
   value: FunctionSignature;
   onChange: (next: FunctionSignature) => void;
+  helpText?: string;
 }) {
   function updateSignature(patch: Partial<FunctionSignature>) {
     onChange({ ...value, ...patch });
@@ -32,7 +34,7 @@ export function FunctionSignatureEditor({
     <div className="rounded-lg border border-navy-border bg-navy-900 p-4">
       <h2 className="text-sm font-medium text-foreground">Function signature</h2>
       <p className="mt-1 text-xs text-text-muted">
-        Optional. If set, students get a LeetCode-style function stub instead of raw stdin/stdout.
+        {helpText}
       </p>
 
       <label className="mt-3 flex flex-col gap-1">
