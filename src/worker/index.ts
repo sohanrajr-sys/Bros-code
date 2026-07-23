@@ -99,10 +99,7 @@ async function processQuizAnswer(quizAnswerId: string): Promise<void> {
     });
   } catch (err) {
     console.error(`quiz answer ${quizAnswerId} errored during grading`, err);
-    await prisma.quizAnswer.update({
-      where: { id: quizAnswerId },
-      data: { autoScore: 0, gradingStatus: "GRADED" },
-    });
+    throw err;
   }
 }
 
