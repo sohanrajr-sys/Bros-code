@@ -2714,6 +2714,8 @@ git commit -m "feat: POST /api/quizzes/[id]/attempts — start (or resume) a qui
 
 Hides correct-answer info and hidden test cases from the student — this is the payload the taking UI renders from.
 
+> **Amended post-implementation:** code review caught that the `questions` relation in the code block below is fetched via a bare `include`, which also serializes `acceptedKeywords` — the literal short-answer descriptive answer key — straight into the response, letting any authenticated student read it. The shipped fix (commit `57549b8`) switches `questions` to an explicit `select` (mirroring the `mcqOptions` withholding pattern already used below) that omits `acceptedKeywords`. That commit also added a `role !== "student"` guard (missing here and in Task 18's route) and a P2002-conflict handler for Task 18's attempt-creation race. **If any later task's code needs a similar attempt/question-fetching shape, copy the amended route, not the block below.**
+
 **Files:**
 - Create: `src/app/api/quiz-attempts/[attemptId]/route.ts`
 
