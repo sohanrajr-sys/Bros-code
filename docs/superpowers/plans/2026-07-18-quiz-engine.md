@@ -3778,6 +3778,8 @@ git commit -m "feat: admin attempt list, review, and finalize UI"
 
 ### Task 27: Result page
 
+> **Amended post-implementation:** code review caught that the reference code below doesn't actually deliver the design spec's own requirement ("their answer, the score they earned, and for MCQ, which options were actually correct") — it shows only the score and correct MCQ options, never what the student selected/wrote/submitted, and CODING questions rendered no prompt at all (`QuizQuestion.prompt` is null for that type; the real text is `QuizCodingQuestion.description`, not fetched below). The shipped fix (commit `8b3ca0f`) fetches `selectedOptionIds`/`textAnswer`/`codeLanguage`/`codeSubmission` (already on the answer, no extra query) and `codingQuestion.description`/`constraints`, and renders the student's own answer per question type, mirroring `QuizAttemptReview.tsx`'s MCQ styling. **The actual behavior in the codebase is the amended version**, not the code block below.
+
 **Files:**
 - Create: `src/app/(app)/quizzes/[id]/attempts/[attemptId]/result/page.tsx`
 
