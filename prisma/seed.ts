@@ -755,6 +755,66 @@ async function main() {
   });
 
   console.log(`Seeded ${seededSlugs.length} problems:`, seededSlugs.join(", "));
+
+  // --- Seed an example quiz ---
+  const existingQuiz = await prisma.quiz.findFirst({ where: { title: "Arrays & Basics Quiz" } });
+  if (!existingQuiz) {
+    await prisma.quiz.create({
+      data: {
+        title: "Arrays & Basics Quiz",
+        description: "A short mixed quiz covering array fundamentals.",
+        status: "PUBLISHED",
+        maxAttempts: 2,
+        createdBy: adminId,
+        questions: {
+          create: [
+            {
+              order: 0,
+              weight: 30,
+              type: "MCQ",
+              prompt: "What is the time complexity of binary search on a sorted array?",
+              mcqScoringMode: "ALL_OR_NOTHING",
+              mcqOptions: {
+                create: [
+                  { text: "O(n)", isCorrect: false, order: 0 },
+                  { text: "O(log n)", isCorrect: true, order: 1 },
+                  { text: "O(n^2)", isCorrect: false, order: 2 },
+                  { text: "O(1)", isCorrect: false, order: 3 },
+                ],
+              },
+            },
+            {
+              order: 1,
+              weight: 20,
+              type: "DESCRIPTIVE",
+              prompt: "In one sentence, what makes binary search possible?",
+              descriptiveMode: "SHORT_ANSWER",
+              acceptedKeywords: ["sorted"],
+            },
+            {
+              order: 2,
+              weight: 50,
+              type: "CODING",
+              codingQuestion: {
+                create: {
+                  description: "Given an array of integers `nums`, return the maximum value in the array.",
+                  functionSignature: { functionName: "findMax", params: [{ name: "nums", type: "int[]" }], returnType: "int" },
+                  testCases: {
+                    create: [
+                      { input: "3 1 4 1 5", expectedOutput: "5", isHidden: false, order: 0 },
+                      { input: "-1 -2 -3", expectedOutput: "-1", isHidden: false, order: 1 },
+                      { input: "7", expectedOutput: "7", isHidden: true, order: 2 },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+    console.log("Seeded quiz: Arrays & Basics Quiz");
+  }
 }
 
 main()
