@@ -234,6 +234,15 @@ export function QuizQuestionEditor({
               className="w-full rounded border border-navy-border bg-navy-950 px-3 py-2 text-sm text-foreground"
             />
           </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-text-muted">Constraints (optional)</span>
+            <textarea
+              rows={2}
+              value={question.constraints ?? ""}
+              onChange={(e) => onChange({ ...question, constraints: e.target.value || null })}
+              className="w-full rounded border border-navy-border bg-navy-950 px-3 py-2 text-sm text-foreground"
+            />
+          </label>
           <FunctionSignatureEditor
             value={question.functionSignature}
             onChange={(sig) => onChange({ ...question, functionSignature: sig })}

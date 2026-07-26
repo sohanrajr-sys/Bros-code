@@ -49,11 +49,15 @@ export function QuizForm({
   const [error, setError] = useState<string | null>(null);
 
   const totalWeight = form.questions.reduce((sum, q) => sum + (q.weight || 0), 0);
+  const canPublish = totalWeight === 100 && form.questions.length > 0;
 
   function addQuestion(template: QuestionDraft) {
     setForm((p) => ({
       ...p,
-      questions: [...p.questions, { ...template, order: p.questions.length }],
+      // structuredClone, not a shallow spread — otherwise every question
+      // added from the same "Add X" click shares the same nested
+      // mcqOptions/testCases array reference until an onChange replaces it.
+      questions: [...p.questions, { ...structuredClone(template), order: p.questions.length }],
     }));
   }
 
@@ -70,10 +74,9 @@ export function QuizForm({
     setSubmitting(true);
     setError(null);
 
-    const body = {
+    const baseBody = {
       title: form.title,
       description: form.description,
-      status,
       opensAt: form.opensAt ? new Date(form.opensAt).toISOString() : null,
       closesAt: form.closesAt ? new Date(form.closesAt).toISOString() : null,
       timeLimitMinutes: form.timeLimitMinutes ? Number(form.timeLimitMinutes) : null,
@@ -81,16 +84,49 @@ export function QuizForm({
       questions: form.questions.map((q, i) => ({ ...q, order: i })),
     };
 
-    const url = mode === "create" ? "/api/admin/quizzes" : `/api/admin/quizzes/${quizId}`;
-    const method = mode === "create" ? "POST" : "PUT";
+    async function putJson(url: string, status: "DRAFT" | "PUBLISHED") {
+      return fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...baseBody, status }),
+      });
+    }
 
     try {
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Request failed with status ${res.status}`);
-        setSubmitting(false);
-        return;
+      if (mode === "create") {
+        // POST always creates as DRAFT regardless of what's sent (the API
+        // enforces this — only PUT re-validates weights/question count and
+        // is allowed to publish). So publishing on create is a real two-step
+        // flow: create the draft, then immediately PUT it to PUBLISHED.
+        const createRes = await fetch("/api/admin/quizzes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...baseBody, status: "DRAFT" }),
+        });
+        if (!createRes.ok) {
+          const data = await createRes.json().catch(() => ({}));
+          setError(data.error ?? `Request failed with status ${createRes.status}`);
+          setSubmitting(false);
+          return;
+        }
+        if (status === "PUBLISHED") {
+          const { quiz } = await createRes.json();
+          const publishRes = await putJson(`/api/admin/quizzes/${quiz.id}`, "PUBLISHED");
+          if (!publishRes.ok) {
+            const data = await publishRes.json().catch(() => ({}));
+            setError(`Saved as draft, but publishing failed: ${data.error ?? publishRes.status}`);
+            setSubmitting(false);
+            return;
+          }
+        }
+      } else {
+        const res = await putJson(`/api/admin/quizzes/${quizId}`, status);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setError(data.error ?? `Request failed with status ${res.status}`);
+          setSubmitting(false);
+          return;
+        }
       }
       router.push("/admin/quizzes");
       router.refresh();
@@ -208,8 +244,9 @@ export function QuizForm({
         </button>
         <button
           type="button"
-          disabled={submitting}
+          disabled={submitting || !canPublish}
           onClick={(e) => submitAs("PUBLISHED", e)}
+          title={canPublish ? undefined : "Add at least one question and make weights sum to 100 before publishing"}
           className="min-h-[44px] rounded bg-mint px-4 text-sm font-medium text-navy-950 transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {submitting ? "Saving…" : "Publish"}
