@@ -22,7 +22,18 @@ export default async function QuizAttemptDetailPage({
     include: {
       user: { select: { name: true, studentId: true } },
       quiz: { select: { title: true } },
-      answers: { include: { question: { select: { type: true, prompt: true, weight: true } } } },
+      answers: {
+        include: {
+          question: {
+            select: {
+              type: true,
+              prompt: true,
+              weight: true,
+              mcqOptions: { orderBy: { order: "asc" }, select: { id: true, text: true, isCorrect: true } },
+            },
+          },
+        },
+      },
     },
   });
   if (!attempt) notFound();

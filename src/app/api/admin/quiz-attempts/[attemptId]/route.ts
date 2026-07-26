@@ -36,7 +36,7 @@ export async function GET(req: Request, { params }: RouteParams) {
 
 const overrideBodySchema = z.object({
   questionId: z.string(),
-  overriddenScore: z.number(),
+  overriddenScore: z.number().min(0, "Score can't be negative"),
 });
 
 export async function PUT(req: Request, { params }: RouteParams) {
@@ -57,9 +57,16 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
   const answer = await prisma.quizAnswer.findUnique({
     where: { attemptId_questionId: { attemptId, questionId: result.data.questionId } },
+    include: { question: { select: { weight: true } } },
   });
   if (!answer) {
     return NextResponse.json({ error: "Answer not found" }, { status: 404 });
+  }
+  if (result.data.overriddenScore > answer.question.weight) {
+    return NextResponse.json(
+      { error: `Score can't exceed this question's weight (${answer.question.weight})` },
+      { status: 400 }
+    );
   }
 
   const updated = await prisma.quizAnswer.update({

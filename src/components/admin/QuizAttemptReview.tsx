@@ -12,7 +12,13 @@ interface AnswerDetail {
   gradingStatus: "PENDING" | "GRADED";
   textAnswer: string | null;
   codeSubmission: string | null;
-  question: { type: "MCQ" | "DESCRIPTIVE" | "CODING"; prompt: string | null; weight: number };
+  selectedOptionIds: string[];
+  question: {
+    type: "MCQ" | "DESCRIPTIVE" | "CODING";
+    prompt: string | null;
+    weight: number;
+    mcqOptions: { id: string; text: string; isCorrect: boolean }[];
+  };
 }
 
 export function QuizAttemptReview({
@@ -34,13 +40,24 @@ export function QuizAttemptReview({
 
   async function saveOverride(questionId: string) {
     setSaving(questionId);
-    await fetch(`/api/admin/quiz-attempts/${attemptId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ questionId, overriddenScore: scores[questionId] }),
-    });
-    setSaving(null);
-    router.refresh();
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/quiz-attempts/${attemptId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, overriddenScore: scores[questionId] }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Failed to save score");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function finalize() {
@@ -77,6 +94,28 @@ export function QuizAttemptReview({
             )}
           </div>
           {a.question.prompt && <p className="mt-2 text-sm text-foreground">{a.question.prompt}</p>}
+          {a.question.type === "MCQ" && (
+            <ul className="mt-2 flex flex-col gap-1">
+              {a.question.mcqOptions.map((opt) => {
+                const selected = a.selectedOptionIds.includes(opt.id);
+                return (
+                  <li
+                    key={opt.id}
+                    className={`rounded border px-3 py-1.5 text-sm ${
+                      opt.isCorrect
+                        ? "border-mint/40 bg-mint/10 text-mint"
+                        : selected
+                          ? "border-danger/40 bg-danger/10 text-danger"
+                          : "border-navy-border text-text-muted"
+                    }`}
+                  >
+                    {selected ? "☑" : "☐"} {opt.text}
+                    {opt.isCorrect && <span className="ml-2 text-xs">(correct)</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           {a.textAnswer && (
             <p className="mt-2 whitespace-pre-wrap rounded border border-navy-border bg-navy-950 p-3 text-sm text-text">
               {a.textAnswer}
