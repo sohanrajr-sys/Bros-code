@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Editor from "@monaco-editor/react";
 import { DSA_LANGUAGES, LANGUAGE_LABELS, MONACO_LANGUAGE_IDS, STARTER_CODE } from "@/components/solve/languageMeta";
@@ -83,6 +83,11 @@ export function QuizWorkspace({
     }
   }
 
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+
   useEffect(() => {
     if (!deadline) return;
     const dl = deadline;
@@ -91,13 +96,12 @@ export function QuizWorkspace({
       setRemainingMs(remaining);
       if (remaining <= 0) {
         clearInterval(interval);
-        submit();
+        submitRef.current();
       }
     }
     const interval = setInterval(tick, 1000);
     tick();
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deadline]);
 
   return (

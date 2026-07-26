@@ -11,6 +11,7 @@ interface AnswerDetail {
   overriddenScore: number | null;
   gradingStatus: "PENDING" | "GRADED";
   textAnswer: string | null;
+  codeLanguage: string | null;
   codeSubmission: string | null;
   selectedOptionIds: string[];
   question: {
@@ -18,6 +19,7 @@ interface AnswerDetail {
     prompt: string | null;
     weight: number;
     mcqOptions: { id: string; text: string; isCorrect: boolean }[];
+    codingQuestion: { description: string; constraints: string | null } | null;
   };
 }
 
@@ -93,7 +95,16 @@ export function QuizAttemptReview({
               <span className="rounded bg-amber/15 px-2 py-0.5 text-xs text-amber">Pending review</span>
             )}
           </div>
-          {a.question.prompt && <p className="mt-2 text-sm text-foreground">{a.question.prompt}</p>}
+          {a.question.type === "CODING" && a.question.codingQuestion ? (
+            <>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{a.question.codingQuestion.description}</p>
+              {a.question.codingQuestion.constraints && (
+                <p className="mt-1 text-xs text-text-muted">{a.question.codingQuestion.constraints}</p>
+              )}
+            </>
+          ) : (
+            a.question.prompt && <p className="mt-2 text-sm text-foreground">{a.question.prompt}</p>
+          )}
           {a.question.type === "MCQ" && (
             <ul className="mt-2 flex flex-col gap-1">
               {a.question.mcqOptions.map((opt) => {
@@ -122,9 +133,12 @@ export function QuizAttemptReview({
             </p>
           )}
           {a.codeSubmission && (
-            <pre className="mt-2 overflow-x-auto rounded border border-navy-border bg-navy-950 p-3 text-xs text-text">
-              {a.codeSubmission}
-            </pre>
+            <>
+              {a.codeLanguage && <div className="mb-1 mt-2 text-xs text-text-muted">{a.codeLanguage}</div>}
+              <pre className="overflow-x-auto rounded border border-navy-border bg-navy-950 p-3 text-xs text-text">
+                {a.codeSubmission}
+              </pre>
+            </>
           )}
           <div className="mt-3 flex items-center gap-2">
             <label className="flex items-center gap-2 text-sm text-text-muted">

@@ -23,6 +23,7 @@ export default async function QuizAttemptDetailPage({
       user: { select: { name: true, studentId: true } },
       quiz: { select: { title: true } },
       answers: {
+        orderBy: { question: { order: "asc" } },
         include: {
           question: {
             select: {
@@ -30,6 +31,7 @@ export default async function QuizAttemptDetailPage({
               prompt: true,
               weight: true,
               mcqOptions: { orderBy: { order: "asc" }, select: { id: true, text: true, isCorrect: true } },
+              codingQuestion: { select: { description: true, constraints: true } },
             },
           },
         },
