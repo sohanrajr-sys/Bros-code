@@ -49,7 +49,9 @@ export function QuizForm({
   const [error, setError] = useState<string | null>(null);
 
   const totalWeight = form.questions.reduce((sum, q) => sum + (q.weight || 0), 0);
-  const canPublish = totalWeight === 100 && form.questions.length > 0;
+  // Rounded the same way the server's weightsSumTo100 does, so this button
+  // never disagrees with the PUT it's about to trigger over float drift.
+  const canPublish = Math.round(totalWeight * 100) / 100 === 100 && form.questions.length > 0;
 
   function addQuestion(template: QuestionDraft) {
     setForm((p) => ({
