@@ -2,42 +2,40 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserFromCookies } from "@/lib/session";
 import { QuizWorkspace } from "@/components/quiz/QuizWorkspace";
+import { startOrResumeAttempt } from "@/lib/quizAttempts";
 
 export const dynamic = "force-dynamic";
+
+function InfoMessage({ text }: { text: string }) {
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
+      <p className="text-text-muted">{text}</p>
+    </main>
+  );
+}
 
 export default async function TakeQuizPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUserFromCookies();
   if (!user) redirect("/login");
+  // Not a confidentiality concern the way the API withholding is — just
+  // keeps this page's only real audience (students) from accidentally
+  // creating QuizAttempt rows under a non-student account.
+  if (user.role !== "student") notFound();
 
   const { id } = await params;
-  const quiz = await prisma.quiz.findUnique({ where: { id } });
-  if (!quiz || quiz.status !== "PUBLISHED") notFound();
+  // Same start-or-resume logic POST /api/quizzes/[id]/attempts uses — one
+  // shared function so a fix to attempt-window/race handling can't miss
+  // one of the two call sites.
+  const result = await startOrResumeAttempt(id, user.userId);
 
-  let attempt = await prisma.quizAttempt.findFirst({
-    where: { quizId: id, userId: user.userId, status: "IN_PROGRESS" },
-  });
+  if (result.status === "not_found") notFound();
+  if (result.status === "not_open") return <InfoMessage text="This quiz hasn't opened yet." />;
+  if (result.status === "closed") return <InfoMessage text="This quiz has closed." />;
+  if (result.status === "exhausted") return <InfoMessage text="You've used all your attempts for this quiz." />;
+  if (result.status === "awaiting_results") return <InfoMessage text="Submitted — waiting for results." />;
 
-  if (!attempt) {
-    const attemptCount = await prisma.quizAttempt.count({ where: { quizId: id, userId: user.userId } });
-    if (attemptCount >= quiz.maxAttempts) {
-      return (
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-          <p className="text-text-muted">You&apos;ve used all your attempts for this quiz.</p>
-        </main>
-      );
-    }
-    attempt = await prisma.quizAttempt.create({
-      data: { quizId: id, userId: user.userId, attemptNumber: attemptCount + 1 },
-    });
-  }
-
-  if (attempt.status !== "IN_PROGRESS") {
-    return (
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        <p className="text-text-muted">Submitted — waiting for results.</p>
-      </main>
-    );
-  }
+  const { attempt } = result;
+  const quiz = await prisma.quiz.findUniqueOrThrow({ where: { id } });
 
   const questions = await prisma.quizQuestion.findMany({
     where: { quizId: id },
