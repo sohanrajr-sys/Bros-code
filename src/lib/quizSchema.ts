@@ -157,6 +157,25 @@ function canonicalizeQuestion(q: QuizQuestionInput | StoredQuestion): unknown {
 }
 
 /**
+ * Deterministic JSON serialization that sorts object keys — plain
+ * JSON.stringify is insertion-order-dependent, but Postgres `jsonb` columns
+ * (e.g. QuizCodingQuestion.functionSignature) don't preserve the key order
+ * they were written with, so a submitted object and its own just-fetched
+ * round-trip can stringify differently even when semantically identical.
+ * Array element order is preserved (it's meaningful — e.g. function params).
+ */
+function canonicalJsonStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJsonStringify).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const keys = Object.keys(value as Record<string, unknown>).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJsonStringify((value as Record<string, unknown>)[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
  * True if a submitted question set is identical (order included) to what's
  * already stored — used to allow metadata-only quiz edits (title, schedule,
  * etc.) once a quiz has real attempts, without permitting the destructive
@@ -165,5 +184,7 @@ function canonicalizeQuestion(q: QuizQuestionInput | StoredQuestion): unknown {
  */
 export function questionsUnchanged(submitted: QuizQuestionInput[], stored: StoredQuestion[]): boolean {
   if (submitted.length !== stored.length) return false;
-  return submitted.every((q, i) => JSON.stringify(canonicalizeQuestion(q)) === JSON.stringify(canonicalizeQuestion(stored[i])));
+  return submitted.every(
+    (q, i) => canonicalJsonStringify(canonicalizeQuestion(q)) === canonicalJsonStringify(canonicalizeQuestion(stored[i]))
+  );
 }
