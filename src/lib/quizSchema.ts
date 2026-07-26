@@ -169,8 +169,13 @@ function canonicalJsonStringify(value: unknown): string {
     return `[${value.map(canonicalJsonStringify).join(",")}]`;
   }
   if (value !== null && typeof value === "object") {
-    const keys = Object.keys(value as Record<string, unknown>).sort();
-    return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJsonStringify((value as Record<string, unknown>)[k])}`).join(",")}}`;
+    // Match plain JSON.stringify's behavior of dropping undefined-valued
+    // keys entirely, rather than serializing them as the literal "undefined".
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record)
+      .filter((k) => record[k] !== undefined)
+      .sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJsonStringify(record[k])}`).join(",")}}`;
   }
   return JSON.stringify(value);
 }
