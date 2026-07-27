@@ -20,6 +20,38 @@ interface AttemptQuestion {
   codingQuestion: { description: string; constraints: string | null } | null;
 }
 
+interface TestCaseResult {
+  testCaseId: string;
+  passed: boolean;
+  isHidden: boolean;
+}
+
+interface FirstFailure {
+  testCaseId: string;
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  error?: string;
+}
+
+interface RunResult {
+  passed: boolean;
+  results: { cases: TestCaseResult[]; firstFailure?: FirstFailure };
+}
+
+// The server can fail before producing a JSON body (e.g. an unhandled
+// exception yields an empty response) — res.json() throws a confusing
+// "Unexpected end of JSON input" in that case, so parse defensively.
+async function parseJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text) return { error: `Request failed with status ${res.status}` };
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: `Unexpected response (status ${res.status})` };
+  }
+}
+
 export function QuizWorkspace({
   attemptId,
   quizTitle,
@@ -44,6 +76,9 @@ export function QuizWorkspace({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState<Record<string, boolean>>({});
+  const [runResults, setRunResults] = useState<Record<string, RunResult | null>>({});
+  const [runErrors, setRunErrors] = useState<Record<string, string | null>>({});
 
   const deadline = useMemo(() => {
     if (!timeLimitMinutes) return null;
@@ -80,6 +115,26 @@ export function QuizWorkspace({
     } catch {
       setError("Network error. Please try again.");
       setSubmitting(false);
+    }
+  }
+
+  async function handleRun(questionId: string) {
+    setRunning((prev) => ({ ...prev, [questionId]: true }));
+    setRunErrors((prev) => ({ ...prev, [questionId]: null }));
+    setRunResults((prev) => ({ ...prev, [questionId]: null }));
+    try {
+      const res = await fetch(`/api/quiz-attempts/${attemptId}/questions/${questionId}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: codeLanguages[questionId], code: codeAnswers[questionId] }),
+      });
+      const data = await parseJsonResponse(res);
+      if (!res.ok) throw new Error((data.error as string) ?? "run failed");
+      setRunResults((prev) => ({ ...prev, [questionId]: data as unknown as RunResult }));
+    } catch (err) {
+      setRunErrors((prev) => ({ ...prev, [questionId]: err instanceof Error ? err.message : String(err) }));
+    } finally {
+      setRunning((prev) => ({ ...prev, [questionId]: false }));
     }
   }
 
@@ -170,21 +225,30 @@ export function QuizWorkspace({
                 {q.codingQuestion.constraints && (
                   <p className="mt-2 text-xs text-text-muted">{renderInlineCode(q.codingQuestion.constraints)}</p>
                 )}
-                <select
-                  value={codeLanguages[q.id]}
-                  onChange={(e) => {
-                    const lang = e.target.value as Language;
-                    setCodeLanguages((prev) => ({ ...prev, [q.id]: lang }));
-                    setCodeAnswers((prev) => ({ ...prev, [q.id]: STARTER_CODE[lang] }));
-                  }}
-                  className="select-field mt-3 min-h-[44px] rounded border border-navy-border bg-navy-950 px-2 text-sm text-foreground"
-                >
-                  {DSA_LANGUAGES.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {LANGUAGE_LABELS[lang]}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <select
+                    value={codeLanguages[q.id]}
+                    onChange={(e) => {
+                      const lang = e.target.value as Language;
+                      setCodeLanguages((prev) => ({ ...prev, [q.id]: lang }));
+                      setCodeAnswers((prev) => ({ ...prev, [q.id]: STARTER_CODE[lang] }));
+                    }}
+                    className="select-field min-h-[44px] rounded border border-navy-border bg-navy-950 px-2 text-sm text-foreground"
+                  >
+                    {DSA_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>
+                        {LANGUAGE_LABELS[lang]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleRun(q.id)}
+                    disabled={running[q.id]}
+                    className="min-h-[44px] rounded bg-navy-800 px-4 text-sm font-medium text-cyan transition-colors hover:bg-navy-border disabled:opacity-50"
+                  >
+                    {running[q.id] ? "Running…" : "Run"}
+                  </button>
+                </div>
                 <div className="mt-2 h-[300px]">
                   <Editor
                     height="100%"
@@ -195,6 +259,12 @@ export function QuizWorkspace({
                     options={{ minimap: { enabled: false }, fontSize: 13 }}
                   />
                 </div>
+                {(runErrors[q.id] || runResults[q.id]) && (
+                  <div className="mt-2 rounded border border-navy-border bg-navy-950 p-3 text-sm">
+                    {runErrors[q.id] && <p className="text-danger">{runErrors[q.id]}</p>}
+                    {runResults[q.id] && <RunResultDetail result={runResults[q.id]!} />}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -210,6 +280,53 @@ export function QuizWorkspace({
       >
         {submitting ? "Submitting…" : "Submit Quiz"}
       </button>
+    </div>
+  );
+}
+
+function RunResultDetail({ result }: { result: RunResult }) {
+  const { cases, firstFailure } = result.results;
+  return (
+    <div>
+      <p className={result.passed ? "font-semibold text-mint" : "font-semibold text-danger"}>
+        {result.passed ? "Passed" : "Failed"} ({cases.filter((c) => c.passed).length}/{cases.length} sample test
+        cases)
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1" aria-hidden="true">
+        {cases.map((c) => (
+          <span
+            key={c.testCaseId}
+            title={c.passed ? "Passed" : "Failed"}
+            className={`h-2.5 w-2.5 rounded-full ${c.passed ? "bg-mint" : "bg-danger"}`}
+          />
+        ))}
+      </div>
+      {!result.passed && firstFailure && (
+        <div className="mt-2 rounded border border-navy-border bg-navy-900 p-3 text-xs">
+          {firstFailure.error ? (
+            <>
+              <div className="mb-1 text-text-muted">Error</div>
+              <pre className="whitespace-pre-wrap text-danger">{firstFailure.error}</pre>
+            </>
+          ) : (
+            <>
+              <div className="mb-1 text-text-muted">First failing test case</div>
+              <div>
+                <span className="text-text-muted">Input: </span>
+                <code>{firstFailure.input}</code>
+              </div>
+              <div>
+                <span className="text-text-muted">Expected: </span>
+                <code className="text-mint">{firstFailure.expectedOutput}</code>
+              </div>
+              <div>
+                <span className="text-text-muted">Actual: </span>
+                <code className="text-danger">{firstFailure.actualOutput}</code>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
