@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserFromCookies } from "@/lib/session";
 import { QuizWorkspace } from "@/components/quiz/QuizWorkspace";
 import { startOrResumeAttempt } from "@/lib/quizAttempts";
+import { getCodegen } from "@/lib/codegen";
+import { functionSignatureSchema } from "@/lib/functionSignature";
+import { DSA_LANGUAGES, STARTER_CODE } from "@/components/solve/languageMeta";
+import type { Language } from "@/generated/prisma/enums";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +52,23 @@ export default async function TakeQuizPage({ params }: { params: Promise<{ id: s
       type: true,
       prompt: true,
       mcqOptions: { orderBy: { order: "asc" }, select: { id: true, text: true, order: true } }, // isCorrect withheld
-      codingQuestion: { select: { description: true, constraints: true } },
+      codingQuestion: { select: { description: true, constraints: true, functionSignature: true } },
     },
+  });
+
+  // Coding questions always carry a function signature (enforced at creation) —
+  // generate the same LeetCode-style stub the DSA problem solve page uses,
+  // instead of a generic raw-stdin/stdout template that doesn't match how the
+  // submission is actually graded (see src/worker/graders/dsa.ts).
+  const questionsWithStarterCode = questions.map((q) => {
+    if (q.type !== "CODING" || !q.codingQuestion) return { ...q, starterCodeByLanguage: null };
+    const sig = functionSignatureSchema.parse(q.codingQuestion.functionSignature);
+    const starterCodeByLanguage: Partial<Record<Language, string>> = {};
+    for (const lang of DSA_LANGUAGES) {
+      const codegen = getCodegen(lang);
+      starterCodeByLanguage[lang] = codegen ? codegen.starterTemplate(sig) : STARTER_CODE[lang];
+    }
+    return { ...q, starterCodeByLanguage };
   });
 
   return (
@@ -58,7 +77,7 @@ export default async function TakeQuizPage({ params }: { params: Promise<{ id: s
       quizTitle={quiz.title}
       timeLimitMinutes={quiz.timeLimitMinutes}
       startedAt={attempt.startedAt.toISOString()}
-      questions={questions}
+      questions={questionsWithStarterCode}
     />
   );
 }

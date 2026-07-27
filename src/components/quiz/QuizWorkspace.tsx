@@ -18,6 +18,7 @@ interface AttemptQuestion {
   prompt: string | null;
   mcqOptions: McqOption[];
   codingQuestion: { description: string; constraints: string | null } | null;
+  starterCodeByLanguage: Partial<Record<Language, string>> | null;
 }
 
 interface TestCaseResult {
@@ -72,7 +73,12 @@ export function QuizWorkspace({
     () => Object.fromEntries(questions.filter((q) => q.type === "CODING").map((q) => [q.id, "PYTHON" as Language]))
   );
   const [codeAnswers, setCodeAnswers] = useState<Record<string, string>>(
-    () => Object.fromEntries(questions.filter((q) => q.type === "CODING").map((q) => [q.id, STARTER_CODE.PYTHON]))
+    () =>
+      Object.fromEntries(
+        questions
+          .filter((q) => q.type === "CODING")
+          .map((q) => [q.id, q.starterCodeByLanguage?.PYTHON ?? STARTER_CODE.PYTHON])
+      )
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -231,7 +237,7 @@ export function QuizWorkspace({
                     onChange={(e) => {
                       const lang = e.target.value as Language;
                       setCodeLanguages((prev) => ({ ...prev, [q.id]: lang }));
-                      setCodeAnswers((prev) => ({ ...prev, [q.id]: STARTER_CODE[lang] }));
+                      setCodeAnswers((prev) => ({ ...prev, [q.id]: q.starterCodeByLanguage?.[lang] ?? STARTER_CODE[lang] }));
                     }}
                     className="select-field min-h-[44px] rounded border border-navy-border bg-navy-950 px-2 text-sm text-foreground"
                   >
