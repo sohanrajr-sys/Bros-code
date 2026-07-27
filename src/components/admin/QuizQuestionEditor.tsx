@@ -246,6 +246,7 @@ export function QuizQuestionEditor({
           <FunctionSignatureEditor
             value={question.functionSignature}
             onChange={(sig) => onChange({ ...question, functionSignature: sig })}
+            helpText="Required. Students get a LeetCode-style function stub — no raw stdin/stdout for quiz coding questions."
           />
           <TestCaseListEditor
             testCases={question.testCases}
