@@ -1,5 +1,7 @@
 "use client";
 
+import type { FunctionSignature, ParamType } from "@/lib/functionSignature";
+
 export interface TestCaseDraft {
   input: string;
   expectedOutput: string;
@@ -14,12 +16,44 @@ export const EMPTY_TEST_CASE: TestCaseDraft = {
   order: 0,
 };
 
+// One line per placeholder, matching the line encoding in
+// docs/superpowers/specs/2026-07-12-function-signature-problems-design.md.
+const TYPE_PLACEHOLDERS: Record<ParamType, string> = {
+  int: "42",
+  double: "3.14",
+  boolean: "true",
+  string: "hello world",
+  "int[]": "2 7 11 15",
+  "double[]": "1.5 2.5",
+  "boolean[]": "true false",
+  "string[]": "flower,flow,flight",
+  "int[][]": "1,2;3,4",
+  ListNode: "1 2 3 4",
+  TreeNode: "3 9 20 # # 15 7",
+};
+
+/** input is one line per param, in signature order — see the line-encoding table in the design doc. */
+function paramLine(input: string, index: number): string {
+  return input.split("\n")[index] ?? "";
+}
+
+function withParamLine(input: string, index: number, value: string): string {
+  const lines = input.split("\n");
+  while (lines.length <= index) lines.push("");
+  lines[index] = value;
+  return lines.join("\n");
+}
+
 export function TestCaseListEditor({
   testCases,
   onChange,
+  functionSignature,
 }: {
   testCases: TestCaseDraft[];
   onChange: (next: TestCaseDraft[]) => void;
+  /** When a function signature is known, test cases are edited as one labeled field per
+   *  parameter (plus the return value) instead of a single hand-encoded input/output blob. */
+  functionSignature?: FunctionSignature | null;
 }) {
   function updateTestCase(index: number, patch: Partial<TestCaseDraft>) {
     onChange(testCases.map((tc, i) => (i === index ? { ...tc, ...patch } : tc)));
@@ -32,6 +66,9 @@ export function TestCaseListEditor({
   function removeTestCase(index: number) {
     onChange(testCases.filter((_, i) => i !== index));
   }
+
+  const params = functionSignature?.functionName.trim() ? functionSignature.params.filter((p) => p.name.trim()) : [];
+  const hasSignature = params.length > 0;
 
   return (
     <div>
@@ -62,28 +99,59 @@ export function TestCaseListEditor({
               )}
             </div>
 
-            <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-text-muted">Input</span>
-                <textarea
-                  required
-                  rows={4}
-                  value={tc.input}
-                  onChange={(e) => updateTestCase(index, { input: e.target.value })}
-                  className="w-full rounded border border-navy-border bg-navy-950 px-3 py-2 font-mono text-sm text-foreground"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-text-muted">Expected output</span>
-                <textarea
-                  required
-                  rows={4}
-                  value={tc.expectedOutput}
-                  onChange={(e) => updateTestCase(index, { expectedOutput: e.target.value })}
-                  className="w-full rounded border border-navy-border bg-navy-950 px-3 py-2 font-mono text-sm text-foreground"
-                />
-              </label>
-            </div>
+            {hasSignature ? (
+              <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {params.map((p, i) => (
+                  <label key={i} className="flex flex-col gap-1">
+                    <span className="text-xs text-text-muted">
+                      {p.name} <span className="text-text-muted/70">({p.type})</span>
+                    </span>
+                    <input
+                      required
+                      value={paramLine(tc.input, i)}
+                      onChange={(e) => updateTestCase(index, { input: withParamLine(tc.input, i, e.target.value) })}
+                      placeholder={TYPE_PLACEHOLDERS[p.type]}
+                      className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 font-mono text-sm text-foreground"
+                    />
+                  </label>
+                ))}
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-text-muted">
+                    Return value <span className="text-text-muted/70">({functionSignature!.returnType})</span>
+                  </span>
+                  <input
+                    required
+                    value={tc.expectedOutput}
+                    onChange={(e) => updateTestCase(index, { expectedOutput: e.target.value })}
+                    placeholder={TYPE_PLACEHOLDERS[functionSignature!.returnType]}
+                    className="min-h-[44px] w-full rounded border border-navy-border bg-navy-950 px-3 font-mono text-sm text-foreground"
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-text-muted">Input</span>
+                  <textarea
+                    required
+                    rows={4}
+                    value={tc.input}
+                    onChange={(e) => updateTestCase(index, { input: e.target.value })}
+                    className="w-full rounded border border-navy-border bg-navy-950 px-3 py-2 font-mono text-sm text-foreground"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-text-muted">Expected output</span>
+                  <textarea
+                    required
+                    rows={4}
+                    value={tc.expectedOutput}
+                    onChange={(e) => updateTestCase(index, { expectedOutput: e.target.value })}
+                    className="w-full rounded border border-navy-border bg-navy-950 px-3 py-2 font-mono text-sm text-foreground"
+                  />
+                </label>
+              </div>
+            )}
 
             <div className="mt-3 flex flex-wrap items-center gap-4">
               <label className="flex min-h-[44px] items-center gap-2 text-sm text-text-muted">

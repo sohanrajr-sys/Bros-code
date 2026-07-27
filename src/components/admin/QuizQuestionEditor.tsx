@@ -250,6 +250,7 @@ export function QuizQuestionEditor({
           <TestCaseListEditor
             testCases={question.testCases}
             onChange={(testCases) => onChange({ ...question, testCases })}
+            functionSignature={question.functionSignature}
           />
         </div>
       )}

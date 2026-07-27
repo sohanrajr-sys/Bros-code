@@ -206,6 +206,7 @@ export function ProblemForm({
       <TestCaseListEditor
         testCases={form.testCases}
         onChange={(testCases) => setForm((p) => ({ ...p, testCases }))}
+        functionSignature={form.type === "DSA" ? form.functionSignature : null}
       />
 
       <div className="flex flex-col gap-3 sm:flex-row">
