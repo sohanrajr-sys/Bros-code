@@ -18,7 +18,7 @@ function parseRows(raw: string): { studentId: string; name: string }[] {
     .filter((line) => line.length > 0)
     .map((line) => {
       const [studentId, ...rest] = line.split(",").map((part) => part.trim());
-      return { studentId: studentId ?? "", name: rest.join(",").trim() || studentId };
+      return { studentId: studentId ?? "", name: rest.join(", ").trim() || studentId };
     });
 }
 

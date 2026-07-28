@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Academic OS",
+  title: { default: "Academic OS", template: "%s · Academic OS" },
   description: "Practice DSA and SQL problems across 5 languages.",
 };
 

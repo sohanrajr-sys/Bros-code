@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { Language } from "@/generated/prisma/enums";
 import { gradeSql } from "@/worker/graders/sql";
 import { gradeDsa } from "@/worker/graders/dsa";
+import { getSessionUser } from "@/lib/session";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface RunBody {
   language?: unknown;
@@ -14,6 +16,16 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const sessionUser = await getSessionUser(request);
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimit = await checkRateLimit(`run:${sessionUser.userId}`, { limit: 20, windowSeconds: 60 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many run requests. Try again shortly." }, { status: 429 });
+  }
+
   const { id } = await params;
 
   let body: RunBody;

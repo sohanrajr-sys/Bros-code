@@ -12,33 +12,30 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = token ? await verifySession(token) : null;
 
+  const isLoginPage = pathname === "/login";
   const isAdminPath = pathname.startsWith("/admin");
-  const isAdminLogin = pathname === "/admin/login";
-  const isStudentLogin = pathname === "/login";
 
-  // Already-logged-in users hitting a login page: bounce to their landing page.
-  if (session && (isStudentLogin || isAdminLogin)) {
-    return NextResponse.redirect(
-      new URL(session.role === "ADMIN" ? "/admin/problems" : "/", request.url),
-    );
+  // The login page always renders — even when already authenticated, it
+  // shows a "logged in as X" banner with a log-out option instead of
+  // silently bouncing the user away (see LoginPageClient).
+  if (isLoginPage) {
+    return NextResponse.next();
   }
 
-  if (isAdminPath && !isAdminLogin) {
-    // No session at all: bounce to admin login. A session with the wrong role
-    // (a logged-in student) is intentionally NOT redirected here — that case
-    // is left to the admin layout, which renders a Forbidden page instead of
-    // sending an already-logged-in user back to a login form they can't use.
+  if (isAdminPath) {
+    // No session at all: bounce to the login page with the admin tab
+    // preselected. A session with the wrong role (a logged-in student) is
+    // intentionally NOT redirected here — that case is left to the admin
+    // layout, which renders a Forbidden page instead of sending an
+    // already-logged-in user back to a login form they can't use.
     if (!session) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return NextResponse.redirect(new URL("/login?as=admin", request.url));
     }
     return NextResponse.next();
   }
 
-  // Everything else (student-facing surface) except the login pages themselves.
-  if (!isStudentLogin && !isAdminLogin) {
-    if (!session) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  if (!session) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();
@@ -50,7 +47,7 @@ export const config = {
      * Run on everything except:
      * - Next internals (_next/static, _next/image)
      * - favicon.ico
-     * - /api/** (Route Handlers already do their own getSessionUser(req) check)
+     * - /api/** (every Route Handler does its own getSessionUser(req) check)
      */
     "/((?!_next/static|_next/image|favicon.ico|api).*)",
   ],

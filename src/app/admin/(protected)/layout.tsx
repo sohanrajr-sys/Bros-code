@@ -12,7 +12,7 @@ export default async function AdminLayout({
   const user = await getSessionUserFromCookies();
 
   if (!user) {
-    redirect("/admin/login");
+    redirect("/login?as=admin");
   }
 
   if (user.role !== "admin") {
