@@ -45,6 +45,38 @@ enum SubmissionStatus {
   ERROR
 }
 
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum QuizQuestionType {
+  MCQ
+  DESCRIPTIVE
+  CODING
+}
+
+enum McqScoringMode {
+  ALL_OR_NOTHING
+  PROPORTIONAL
+}
+
+enum DescriptiveMode {
+  SHORT_ANSWER
+  LONG_ANSWER
+}
+
+enum QuizAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  FINALIZED
+}
+
+enum GradingStatus {
+  PENDING
+  GRADED
+}
+
 model User {
   id           String   @id @default(cuid())
   role         Role
@@ -55,8 +87,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  createdProblems Problem[]    @relation("ProblemCreatedBy")
+  createdProblems Problem[]     @relation("ProblemCreatedBy")
   submissions     Submission[]
+  createdQuizzes  Quiz[]        @relation("QuizCreatedBy")
+  quizAttempts    QuizAttempt[]
 }
 
 model Problem {
@@ -106,4 +140,123 @@ model Submission {
 
   @@index([problemId])
   @@index([userId])
+}
+
+model Quiz {
+  id               String     @id @default(cuid())
+  title            String
+  description      String
+  status           QuizStatus @default(DRAFT)
+  opensAt          DateTime?
+  closesAt         DateTime?
+  timeLimitMinutes Int?
+  maxAttempts      Int        @default(1)
+  createdBy        String
+  createdByUser    User       @relation("QuizCreatedBy", fields: [createdBy], references: [id])
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+}
+
+model QuizQuestion {
+  id     String           @id @default(cuid())
+  quizId String
+  order  Int
+  type   QuizQuestionType
+  weight Int
+
+  mcqScoringMode   McqScoringMode?
+  descriptiveMode  DescriptiveMode?
+  acceptedKeywords String[]
+  prompt           String?
+
+  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  mcqOptions     QuizMcqOption[]
+  codingQuestion QuizCodingQuestion?
+  answers        QuizAnswer[]
+
+  @@index([quizId])
+}
+
+model QuizMcqOption {
+  id         String  @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean @default(false)
+  order      Int
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+model QuizCodingQuestion {
+  id                String  @id @default(cuid())
+  questionId        String  @unique
+  description       String
+  constraints       String?
+  functionSignature Json
+
+  question  QuizQuestion         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  testCases QuizCodingTestCase[]
+}
+
+model QuizCodingTestCase {
+  id               String  @id @default(cuid())
+  codingQuestionId String
+  input            String
+  expectedOutput   String
+  isHidden         Boolean @default(false)
+  order            Int
+
+  codingQuestion QuizCodingQuestion @relation(fields: [codingQuestionId], references: [id], onDelete: Cascade)
+
+  @@index([codingQuestionId])
+}
+
+model QuizAttempt {
+  id            String            @id @default(cuid())
+  quizId        String
+  userId        String
+  attemptNumber Int
+  status        QuizAttemptStatus @default(IN_PROGRESS)
+  isLate        Boolean           @default(false)
+  startedAt     DateTime          @default(now())
+  submittedAt   DateTime?
+  finalizedAt   DateTime?
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id])
+  answers QuizAnswer[]
+
+  @@unique([quizId, userId, attemptNumber])
+  @@index([quizId])
+  @@index([userId])
+}
+
+model QuizAnswer {
+  id         String @id @default(cuid())
+  attemptId  String
+  questionId String
+
+  selectedOptionIds String[]
+  textAnswer        String?
+  codeLanguage      Language?
+  codeSubmission    String?
+
+  autoScore       Float?
+  overriddenScore Float?
+  gradingStatus   GradingStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempt  QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
 }

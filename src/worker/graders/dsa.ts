@@ -1,14 +1,21 @@
-import type { TestCase } from "@/generated/prisma/client";
 import type { Language } from "@/generated/prisma/enums";
 import { PISTON_RUNTIMES, runPistonSubmission } from "@/lib/piston";
 import { getCodegen } from "@/lib/codegen";
 import { functionSignatureSchema, type FunctionSignature } from "@/lib/functionSignature";
 import type { FirstFailure, GradeOutcome, TestCaseResult } from "../types";
 
+/** Structural shape both Problem.TestCase and QuizCodingTestCase satisfy. */
+export interface GradableTestCase {
+  id: string;
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+}
+
 export async function gradeDsa(
   language: Language,
   code: string,
-  testCases: TestCase[],
+  testCases: GradableTestCase[],
   functionSignature?: unknown
 ): Promise<GradeOutcome> {
   if (!PISTON_RUNTIMES[language]) {
