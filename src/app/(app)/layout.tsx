@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUserFromCookies } from "@/lib/session";
 import { logout } from "@/app/actions/logout";
+import { Forbidden } from "@/components/admin/Forbidden";
 
 export default async function AppLayout({
   children,
@@ -12,6 +13,10 @@ export default async function AppLayout({
 
   if (!user) {
     redirect("/login");
+  }
+
+  if (user.role !== "student") {
+    return <Forbidden loginId={user.loginId} restrictedTo="students" />;
   }
 
   return (

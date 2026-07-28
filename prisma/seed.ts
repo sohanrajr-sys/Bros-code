@@ -4,12 +4,27 @@ import type { Prisma } from "../src/generated/prisma/client";
 import type { FunctionSignature } from "../src/lib/functionSignature";
 import { hashPassword } from "../src/lib/password";
 
+const PLACEHOLDER_ADMIN_VALUES = new Set(["admin@example.com", "change-me"]);
+const MIN_PROD_ADMIN_PASSWORD_LENGTH = 12;
+
 async function bootstrapAdmin(): Promise<{ id: string } | null> {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) {
     console.warn("ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping admin bootstrap.");
     return null;
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    (PLACEHOLDER_ADMIN_VALUES.has(email) ||
+      PLACEHOLDER_ADMIN_VALUES.has(password) ||
+      password.length < MIN_PROD_ADMIN_PASSWORD_LENGTH)
+  ) {
+    throw new Error(
+      "ADMIN_EMAIL/ADMIN_PASSWORD look like .env.example placeholders or a weak " +
+        `password (< ${MIN_PROD_ADMIN_PASSWORD_LENGTH} chars) — refusing to bootstrap an admin in production. ` +
+        "Set real, unique values before seeding a production database.",
+    );
   }
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -25,7 +40,9 @@ async function bootstrapAdmin(): Promise<{ id: string } | null> {
 }
 
 // Fixed-credential test student, unlike bootstrapAdmin this always resets the
-// password on reseed — it exists purely so local dev has a known login to test with.
+// password on reseed — it exists purely so local dev has a known login to test
+// with. Gated out of production in main() since student1/password123 must
+// never exist in a real deployment.
 async function seedTestStudent(): Promise<void> {
   const studentId = "student1";
   const passwordHash = await hashPassword("password123");
@@ -121,7 +138,11 @@ function buildCases<T>(
 async function main() {
   const seededSlugs: string[] = [];
   const admin = await bootstrapAdmin();
-  await seedTestStudent();
+  if (process.env.NODE_ENV === "production") {
+    console.log("NODE_ENV=production — skipping seedTestStudent() dev backdoor account.");
+  } else {
+    await seedTestStudent();
+  }
   // Transitional fallback: falls back to the literal "seed-script" string only
   // if ADMIN_EMAIL/ADMIN_PASSWORD aren't set. Once the Problem/Submission FK
   // migration lands, ADMIN_EMAIL/ADMIN_PASSWORD must be set for seeding to work.
